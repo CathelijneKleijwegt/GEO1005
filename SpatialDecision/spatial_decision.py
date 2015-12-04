@@ -22,6 +22,7 @@
 """
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, Qt
 from PyQt4.QtGui import QAction, QIcon
+from qgis.core import *
 # Initialize Qt resources from file resources.py
 import resources
 
@@ -29,6 +30,23 @@ import resources
 from spatial_decision_dockwidget import SpatialDecisionDockWidget
 import os.path
 
+#change sys path to networkx package if not installed
+import sys
+import inspect
+try:
+    import networkx as nx
+except ImportError, e:
+    cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile(inspect.currentframe()))[0],"external")))
+    if cmd_subfolder not in sys.path:
+        sys.path.insert(0, cmd_subfolder)
+
+is_debug = False
+try:
+    import pydevd
+    has_pydevd = True
+except ImportError, e:
+    has_pydevd = False
+    is_debug = False
 
 class SpatialDecision:
     """QGIS Plugin Implementation."""
@@ -72,6 +90,9 @@ class SpatialDecision:
 
         self.pluginIsActive = False
         self.dockwidget = None
+
+        if has_pydevd and is_debug:
+            pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
 
 
     # noinspection PyMethodMayBeStatic
@@ -167,7 +188,7 @@ class SpatialDecision:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/SpatialDecision/icon.png'
+        icon_path = ':/plugins/SpatialDecision/icons/sdss_icon.png'
         self.add_action(
             icon_path,
             text=self.tr(u'SDSS Template'),
@@ -207,7 +228,6 @@ class SpatialDecision:
         del self.toolbar
 
     #--------------------------------------------------------------------------
-
     def run(self):
         """Run method that loads and starts the plugin"""
 
@@ -231,3 +251,4 @@ class SpatialDecision:
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
             self.dockwidget.show()
 
+            #run simple tests here
