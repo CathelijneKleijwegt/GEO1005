@@ -24,12 +24,18 @@
 from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
+import processing
+
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
 # Initialize Qt resources from file resources.py
 import resources
 
 import os
 import os.path
 import random
+import csv
 
 from . import utility_functions as uf
 
@@ -62,6 +68,8 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         # data
         self.iface.projectRead.connect(self.updateLayers)
         self.iface.newProjectCreated.connect(self.updateLayers)
+        self.iface.legendInterface().itemRemoved.connect(self.updateLayers)
+        self.iface.legendInterface().itemAdded.connect(self.updateLayers)
         self.openScenarioButton.clicked.connect(self.openScenario)
         self.saveScenarioButton.clicked.connect(self.saveScenario)
         self.selectLayerCombo.activated.connect(self.setSelectedLayer)
@@ -82,15 +90,32 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         self.expressionFilterButton.clicked.connect(self.filterFeaturesExpression)
 
         # visualisation
+        self.displayStyleButton.clicked.connect(self.displayBenchmarkStyle)
+        self.displayRangeButton.clicked.connect(self.displayContinuousStyle)
+        self.updateAttribute.connect(self.plotChart)
 
         # reporting
         self.featureCounterUpdateButton.clicked.connect(self.updateNumberFeatures)
         self.saveMapButton.clicked.connect(self.saveMap)
         self.saveMapPathButton.clicked.connect(self.selectFile)
         self.updateAttribute.connect(self.extractAttributeSummary)
+        self.saveStatisticsButton.clicked.connect(self.saveTable)
 
         # set current UI restrictions
-        self.makeIntersectionButton.hide()
+
+        # add button icons
+        self.medicButton.setIcon(QtGui.QIcon(':icons/medic_box.png'))
+        self.ambulanceButton.setIcon(QtGui.QIcon(':icons/ambulance.png'))
+
+        # add matplotlib Figure to chartFrame
+        self.chart_figure = Figure()
+        self.chart_subplot_hist = self.chart_figure.add_subplot(221)
+        self.chart_subplot_line = self.chart_figure.add_subplot(222)
+        self.chart_subplot_bar = self.chart_figure.add_subplot(223)
+        self.chart_subplot_pie = self.chart_figure.add_subplot(224)
+        self.chart_figure.tight_layout()
+        self.chart_canvas = FigureCanvas(self.chart_figure)
+        self.chartLayout.addWidget(self.chart_canvas)
 
         # initialisation
         self.updateLayers()
@@ -99,8 +124,13 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def closeEvent(self, event):
         # disconnect interface signals
-        self.iface.projectRead.disconnect(self.updateLayers)
-        self.iface.newProjectCreated.disconnect(self.updateLayers)
+        try:
+            self.iface.projectRead.disconnect(self.updateLayers)
+            self.iface.newProjectCreated.disconnect(self.updateLayers)
+            self.iface.legendInterface().itemRemoved.disconnect(self.updateLayers)
+            self.iface.legendInterface().itemAdded.disconnect(self.updateLayers)
+        except:
+            pass
 
         self.closingPlugin.emit()
         event.accept()
@@ -134,6 +164,10 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             layer_names = uf.getLayersListNames(layers)
             self.selectLayerCombo.addItems(layer_names)
             self.setSelectedLayer()
+        else:
+            self.selectAttributeCombo.clear()
+            self.clearChart()
+
 
     def setSelectedLayer(self):
         layer_name = self.selectLayerCombo.currentText()
@@ -148,11 +182,15 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     def updateAttributes(self, layer):
         self.selectAttributeCombo.clear()
         if layer:
-            fields = uf.getFieldNames(layer)
-            self.selectAttributeCombo.addItems(fields)
-            # send list to the report list window
             self.clearReport()
-            self.updateReport(fields)
+            self.clearChart()
+            fields = uf.getFieldNames(layer)
+            if fields:
+                self.selectAttributeCombo.addItems(fields)
+                self.setSelectedAttribute()
+                # send list to the report list window
+                self.updateReport(fields)
+
 
     def setSelectedAttribute(self):
         field_name = self.selectAttributeCombo.currentText()
@@ -280,7 +318,7 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
             buffers = {}
             for point in origins:
                 geom = point.geometry()
-                buffers[point.id()] = geom.buffer(cutoff_distance,12)
+                buffers[point.id()] = geom.buffer(cutoff_distance,12).asPolygon()
             # store the buffer results in temporary layer called "Buffers"
             buffer_layer = uf.getLegendLayerByName(self.iface, "Buffers")
             # create one if it doesn't exist
@@ -307,28 +345,20 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
         layer = self.getSelectedLayer()
         if cutter.featureCount() > 0:
             # get the intersections between the two layers
-            intersections = uf.getFeaturesIntersections(layer,cutter)
-            if intersections:
-                # store the intersection geometries results in temporary layer called "Intersections"
-                intersection_layer = uf.getLegendLayerByName(self.iface, "Intersections")
-                # create one if it doesn't exist
-                if not intersection_layer:
-                    geom_type = intersections[0].type()
-                    if geom_type == 1:
-                        intersection_layer = uf.createTempLayer('Intersections','POINT',layer.crs().postgisSrid(), [], [])
-                    elif geom_type == 2:
-                        intersection_layer = uf.createTempLayer('Intersections','LINESTRING',layer.crs().postgisSrid(), [], [])
-                    elif geom_type == 3:
-                        intersection_layer = uf.createTempLayer('Intersections','POLYGON',layer.crs().postgisSrid(), [], [])
-                    uf.loadTempLayer(intersection_layer)
-                # insert buffer polygons
-                geoms = []
-                values = []
-                for intersect in intersections:
-                    # each buffer has an id and a geometry
-                    geoms.append(intersect)
-                uf.insertTempFeatures(intersection_layer, geoms, values)
-                self.refreshCanvas(intersection_layer)
+            intersection = processing.runandload('qgis:intersection',layer,cutter,None)
+            intersection_layer = uf.getLegendLayerByName(self.iface, "Intersection")
+            # prepare results layer
+            save_path = "%s/dissolve_results.shp" % QgsProject.instance().homePath()
+            # dissolve grouping by origin id
+            dissolve = processing.runandload('qgis:dissolve',intersection_layer,False,'id',save_path)
+            dissolved_layer = uf.getLegendLayerByName(self.iface, "Dissolved")
+            # close intersections intermediary layer
+            QgsMapLayerRegistry.instance().removeMapLayers([intersection_layer.id()])
+
+            # add an 'area' field and calculate
+            # functiona can add more than one filed, therefore names and types are lists
+            uf.addFields(dissolved_layer, ["area"], [QtCore.QVariant.Double])
+            uf.updateField(dissolved_layer, "area","$area")
 
     # after adding features to layers needs a refresh (sometimes)
     def refreshCanvas(self, layer):
@@ -368,7 +398,105 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    Visualisation functions
 #######
+    def displayBenchmarkStyle(self):
+        # loads a predefined style on a layer.
+        # Best for simple, rule based styles, and categorical variables
+        # attributes and values classes are hard coded in the style
+        layer = uf.getLegendLayerByName(self.iface, "Obstacles")
+        path = "%s/styles/" % QgsProject.instance().homePath()
+        # load a categorical style
+        layer.loadNamedStyle("%sobstacle_danger.qml" % path)
+        layer.triggerRepaint()
+        self.iface.legendInterface().refreshLayerSymbology(layer)
 
+        # load a simple style
+        layer = uf.getLegendLayerByName(self.iface, "Buffers")
+        layer.loadNamedStyle("%sbuffer.qml" % path)
+        layer.triggerRepaint()
+        self.iface.legendInterface().refreshLayerSymbology(layer)
+        self.canvas.refresh()
+
+    def displayContinuousStyle(self):
+        # produces a new symbology renderer for graduated style
+        layer = self.getSelectedLayer()
+        attribute = self.getSelectedAttribute()
+        # define several display parameters
+        display_settings = {}
+        # define the interval type and number of intervals
+        # EqualInterval = 0; Quantile  = 1; Jenks = 2; StdDev = 3; Pretty = 4;
+        display_settings['interval_type'] = 1
+        display_settings['intervals'] = 10
+        # define the line width
+        display_settings['line_width'] = 0.5
+        # define the colour ramp
+        # the ramp's bottom and top colour. These are RGB tuples that can be edited
+        ramp = QgsVectorGradientColorRampV2(QtGui.QColor(0, 0, 255, 255), QtGui.QColor(255, 0, 0, 255), False)
+        # any other stops for intermediate colours for greater control. can be edited or skipped
+        ramp.setStops([QgsGradientStop(0.25, QtGui.QColor(0, 255, 255, 255)),
+                       QgsGradientStop(0.5, QtGui.QColor(0,255,0,255)),
+                       QgsGradientStop(0.75, QtGui.QColor(255, 255, 0, 255))])
+        display_settings['ramp'] = ramp
+        # call the update renderer function
+        renderer = uf.updateRenderer(layer, attribute, display_settings)
+        # update the canvas
+        if renderer:
+            layer.setRendererV2(renderer)
+            layer.triggerRepaint()
+            self.iface.legendInterface().refreshLayerSymbology(layer)
+            self.canvas.refresh()
+
+    def plotChart(self):
+        plot_layer = self.getSelectedLayer()
+        if plot_layer:
+            attribute = self.getSelectedAttribute()
+            if attribute:
+                numeric_fields = uf.getNumericFieldNames(plot_layer)
+
+                # draw a histogram from numeric values
+                if attribute in numeric_fields:
+                    values = uf.getAllFeatureValues(plot_layer, attribute)
+                    n, bins, patches = self.chart_subplot_hist.hist(values, 50, normed=False)
+                else:
+                    self.chart_subplot_hist.cla()
+
+                # draw a simple line plot
+                self.chart_subplot_line.cla()
+                x1 = range(20)
+                y1 = random.sample(range(1, 100), 20)
+                self.chart_subplot_line.plot(x1 , y1 , 'r.-')
+
+                # draw a simple bar plot
+                labels = ('Critical', 'Risk', 'Safe')
+                self.chart_subplot_bar.cla()
+                self.chart_subplot_bar.bar(1.2, y1[0], width=0.7, alpha=1, color='red', label=labels[0])
+                self.chart_subplot_bar.bar(2.2, y1[5], width=0.7, alpha=1, color='yellow', label=labels[1])
+                self.chart_subplot_bar.bar(3.2, y1[10], width=0.7, alpha=1, color='green', label=labels[2])
+                self.chart_subplot_bar.set_xticks((1.5,2.5,3.5))
+                self.chart_subplot_bar.set_xticklabels(labels)
+
+                # draw a simple pie chart
+                self.chart_subplot_pie.cla()
+                total = float(y1[0]+y1[5]+y1[10])
+                sizes = [
+                    (y1[0]/total)*100.0,
+                    (y1[5]/total)*100.0,
+                    (y1[10]/total)*100.0,
+                ]
+                colours = ('lightcoral', 'gold', 'yellowgreen')
+                self.chart_subplot_pie.pie(sizes, labels=labels, colors=colours, autopct='%1.1f%%', shadow=True, startangle=90)
+                self.chart_subplot_pie.axis('equal')
+
+                # draw all the plots
+                self.chart_canvas.draw()
+            else:
+                self.clearChart()
+
+    def clearChart(self):
+        self.chart_subplot_hist.cla()
+        self.chart_subplot_line.cla()
+        self.chart_subplot_bar.cla()
+        self.chart_subplot_pie.cla()
+        self.chart_canvas.draw()
 
 
 #######
@@ -398,9 +526,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def extractAttributeSummary(self, attribute):
         # get summary of the attribute
-        summary = []
         layer = self.getSelectedLayer()
-
+        summary = []
+        # only use the first attribute in the list
+        for feature in layer.getFeatures():
+            summary.append((feature.id(), feature.attribute(attribute)))
         # send this to the table
         self.clearTable()
         self.updateTable(summary)
@@ -419,9 +549,11 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
     # table window functions
     def updateTable(self, values):
         # takes a list of label / value pairs, can be tuples or lists. not dictionaries to control order
+        self.statisticsTable.setColumnCount(2)
         self.statisticsTable.setHorizontalHeaderLabels(["Item","Value"])
         self.statisticsTable.setRowCount(len(values))
         for i, item in enumerate(values):
+            # i is the table row, items mus tbe added as QTableWidgetItems
             self.statisticsTable.setItem(i,0,QtGui.QTableWidgetItem(str(item[0])))
             self.statisticsTable.setItem(i,1,QtGui.QTableWidgetItem(str(item[1])))
         self.statisticsTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
@@ -430,3 +562,27 @@ class SpatialDecisionDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
     def clearTable(self):
         self.statisticsTable.clear()
+
+    def saveTable(self):
+        path = QtGui.QFileDialog.getSaveFileName(self, 'Save File', '', 'CSV(*.csv)')
+        if path:
+            with open(unicode(path), 'wb') as stream:
+                # open csv file for writing
+                writer = csv.writer(stream)
+                # write header
+                header = []
+                for column in range(self.statisticsTable.columnCount()):
+                    item = self.statisticsTable.horizontalHeaderItem(column)
+                    header.append(unicode(item.text()).encode('utf8'))
+                writer.writerow(header)
+                # write data
+                for row in range(self.statisticsTable.rowCount()):
+                    rowdata = []
+                    for column in range(self.statisticsTable.columnCount()):
+                        item = self.statisticsTable.item(row, column)
+                        if item is not None:
+                            rowdata.append(
+                                unicode(item.text()).encode('utf8'))
+                        else:
+                            rowdata.append('')
+                    writer.writerow(rowdata)
