@@ -57,7 +57,7 @@
        </spacer>
       </item>
       <item>
-       <widget class="QListWidget" name="incidentTable"/>
+       <widget class="QListWidget" name="reportTable"/>
       </item>
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_8">
@@ -78,7 +78,7 @@
        </layout>
       </item>
       <item>
-       <widget class="QListView" name="reportList"/>
+       <widget class="QListWidget" name="reportList"/>
       </item>
      </layout>
     </item>
