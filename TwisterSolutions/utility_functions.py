@@ -21,9 +21,10 @@
  ***************************************************************************/
 """
 from PyQt4 import QtGui, QtCore
-#from PyQt4.QtCore import *
-#from PyQt4.QtGui import *
+# from PyQt4.QtCore import *
+# from PyQt4.QtGui import *
 from qgis.core import *
+from qgis.gui import *
 from qgis.networkanalysis import *
 
 
@@ -576,8 +577,11 @@ def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0)
     return points
 
 
-def calculateServiceArea(graph, tied_points, origin, cutoff, impedance=0):
+def calculateServiceArea(mapCanvas, graph, tied_points, origin, cutoff, impedance=0):
     points = {}
+    upperBound = []
+    delta = mapCanvas.getCoordinateTransform().mapUnitsPerPixel() * 1
+
     if tied_points:
         try:
             from_point = tied_points[origin]
@@ -596,9 +600,18 @@ def calculateServiceArea(graph, tied_points, origin, cutoff, impedance=0):
                     outVertexId = graph.arc(tree[i]).outVertex()
                     if cost[outVertexId] < cutoff:
                         points[str(i)]=((graph.vertex(i).point()),cost)
+                        upperBound.append(i)
                 i += 1
 
-    return points
+            for i in upperBound:
+              centerPoint = graph.vertex(i).point()
+              rb = QgsRubberBand(mapCanvas, True)
+              rb.addPoint(QgsPoint(centerPoint.x() - delta, centerPoint.y() - delta))
+              rb.addPoint(QgsPoint(centerPoint.x() + delta, centerPoint.y() - delta))
+              rb.addPoint(QgsPoint(centerPoint.x() + delta, centerPoint.y() + delta))
+              rb.addPoint(QgsPoint(centerPoint.x() - delta, centerPoint.y() + delta))
+
+    return points, rb.asGeometry()
 
 #
 # General functions
@@ -745,22 +758,21 @@ def createTempLayer(name, geometry, srid, attributes, types):
     return vlayer
 
 
-def loadTempLayer(layer):
-    QgsMapLayerRegistry.instance().addMapLayer(layer)
+def loadTempLayer(layer,shown=True):
+    QgsMapLayerRegistry.instance().addMapLayer(layer,shown)
 
 
-def insertTempFeatures(layer, coordinates, attributes):
+def insertTempFeatures(layer, geometry, attributes):
     provider = layer.dataProvider()
     geometry_type = provider.geometryType()
-    for i, geom in enumerate(coordinates):
+    for i, geom in enumerate(geometry):
         fet = QgsFeature()
-        if geometry_type == 1:
+        if geometry_type in (1, 4):
             fet.setGeometry(QgsGeometry.fromPoint(geom))
-        elif geometry_type == 2:
+        elif geometry_type in (2, 5):
             fet.setGeometry(QgsGeometry.fromPolyline(geom))
-        # in the case of polygons, instead of coordinates we insert the geometry
-        elif geometry_type == 3:
-            fet.setGeometry(geom)
+        elif geometry_type in (3, 6):
+            fet.setGeometry(QgsGeometry.fromPolygon(geom))
         if attributes:
             fet.setAttributes(attributes[i])
         provider.addFeatures([fet])

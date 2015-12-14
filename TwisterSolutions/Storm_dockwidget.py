@@ -80,9 +80,9 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         # Initialize
         self.buildNetwork()
+        # self.calculateServiceArea(self.tied_points_police, 'Police',  1500, True)
         self.open_police_sa()
         self.open_fire_sa()
-        # self.initialize()
 
     def closeEvent(self, event):
         # disconnect interface signals
@@ -125,8 +125,12 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
             source_points = []
             police_sources = uf.getFeaturesByExpression(self.locations, """\"type\"=\'police\'""")
             fire_sources = uf.getFeaturesByExpression(self.locations, """\"type\"=\'fire_station\'""")
-            source_points.extend([feature.geometry().asPoint() for id, feature in police_sources.items()])
-            source_points.extend([feature.geometry().asPoint() for id, feature in fire_sources.items()])
+            police_points = [feature.geometry().asPoint() for id, feature in police_sources.items()]
+            len_police = len(police_points)
+            source_points.extend(police_points)
+            fire_points = [feature.geometry().asPoint() for id, feature in fire_sources.items()]
+            len_fire = len(fire_points)
+            source_points.extend(fire_points)
             selected_incidents = uf.getAllFeatures(self.incidents)
             source_incidents = [feature.geometry().asPoint() for id, feature in selected_incidents.items()]
             total_points = source_points + source_incidents
@@ -135,36 +139,33 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 self.graph, self.tied_points = uf.makeUndirectedGraph(self.network_layer, total_points)
                 # the tied points are the new source_points on the graph
                 if self.graph and self.tied_points:
+                    self.tied_points_police = self.tied_points[0:(len_police-1)]
+                    self.tied_points_fire = self.tied_points[len_police:(len_police+len_fire-1)]
                     text = "network is built for %s locations and %s incidents (runtime: %s)" % (len(source_points), len(source_incidents), time.clock())
                     self.insertReport(text)
                     uf.showMessage(self.iface, text, type='Info', lev=3, dur=10)
 
-    def calculateServiceArea(self, features, f_type, cutoff, shown=False):
+    def calculateServiceArea(self, features, f_type, cutoff, shown=False):      # EMPTY TEMP OUTPUT LAYER !!!
         options = len(features)
-
         if options > 0:
+            # empty list of serviceareas
             # origin is given as an index in the tied_points list
-            origin = random.randint(1,options-1)
-            service_area = uf.calculateServiceArea(self.graph, features, origin, cutoff)
-            # store the service area results in temporary layer called "Service_Area"
-            area_layer = uf.getLegendLayerByName(self.iface, "Service Area "+f_type)
-            # create one if it doesn't exist
-            if not area_layer:
-                attribs = ['cost']
-                types = [QtCore.QVariant.Double]
-                area_layer = uf.createTempLayer('Service Area '+f_type,'POINT',
-												self.network_layer.crs().postgisSrid(), attribs, types)
-                uf.loadTempLayer(area_layer)
-            # insert service area points
-            geoms = []
-            values = []
-            for point in service_area.itervalues():
-                # each point is a tuple with geometry and cost
-                geoms.append(point[0])
-                # in the case of values, it expects a list of multiple values in each item - list of lists
-                values.append([cutoff])
-            uf.insertTempFeatures(area_layer, geoms, values)
-            self.refreshCanvas(area_layer)
+            for origin in range(len(features)):
+                service_area, service_poly = uf.calculateServiceArea(self.canvas, self.graph, features, origin, cutoff)
+                # store the service area results in temporary layer called "Service_Area"
+                area_layer = uf.getLegendLayerByName(self.iface, "Service Area "+f_type)
+                # create one if it doesn't exist
+                if not area_layer:
+                    attribs = ['cost']
+                    types = [QtCore.QVariant.Double]
+                    area_layer = uf.createTempLayer('Service Area '+f_type, 'POLYGON', self.network_layer.crs().postgisSrid(), attribs, types)
+                    uf.loadTempLayer(area_layer, shown)  # False -> Keeps layer hidden
+                # insert service area
+                geoms = service_poly.asPolygon()
+                values = [cutoff]
+                uf.insertTempFeatures(area_layer, geoms, values)
+                uf.showMessage(self.iface, 'Check', type='Info', lev=3, dur=1)
+                self.refreshCanvas(area_layer)
 
         """
         if show:
@@ -175,18 +176,12 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
         """
 
     def calc_servicearea_police(self):
-        expression = """\"type\"=\'police\'"""
-        layer_name = uf.getLegendLayerByName(self.iface, self.locations)
-        police_locations = uf.selectFeaturesByExpression(layer_name, expression)
         # output is a polygon layer with service area of police
-        self.calculateServiceArea(police_locations, 'Police',  15, False)
+        self.calculateServiceArea(self.tied_points_police, 'Police',  15)
 
     def calc_serviceare_fire(self):
-        expression = """\"type\"=\'fire_brigade\'"""
-        layer_name = uf.getLegendLayerByName(self.iface, self.locations)
-        fire_locations = uf.selectFeaturesByExpression(layer_name, expression)
         # output is a polygon layer with service area of fire brigade
-        self.calculateServiceArea(fire_locations, 'Fire Brigade', 20, False)
+        self.calculateServiceArea(self.tied_points_fire, 'Fire Brigade', 20)
 
 #######
 #    SOLVE
