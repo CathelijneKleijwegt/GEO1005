@@ -80,7 +80,8 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         # Initialize
         self.buildNetwork()
-        # self.calculateServiceArea(self.tied_points_police, 'Police',  1500, True)
+        self.formatTable(self.incidents)
+        self.calculateServiceArea(self.tied_points_police, 'Police',  1500, True)
         self.open_police_sa()
         self.open_fire_sa()
 
@@ -99,6 +100,22 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
 #######
 #    INITIALIZE
 #######
+    def formatTable(self,layer):
+        self.reportTable.setColumnCount(4)
+        self.reportTable.setHorizontalHeaderLabels(["Timestamp","Subtype","Dispatch","DepartmentID"])
+        features = uf.getAllFeatures(layer)
+        self.reportTable.setRowCount(len(features))
+        fieldnames = uf.getFieldNames(layer)
+        attributesTimestamp = uf.getFieldValues(layer, fieldnames[0], null=True, selection=False)[0]
+        attributesSubtype = uf.getFieldValues(layer, fieldnames[2], null=True, selection=False)[0]
+        attributesDispatch = uf.getFieldValues(layer, fieldnames[6], null=True, selection=False)[0]
+
+        for i in range(len(features)):
+            self.reportTable.setItem(i,0,QtGui.QTableWidgetItem(str(attributesTimestamp[i])))
+            self.reportTable.setItem(i,1,QtGui.QTableWidgetItem(str(attributesSubtype[i])))
+            self.reportTable.setItem(i,2,QtGui.QTableWidgetItem(str(attributesDispatch[i])))
+
+
     def getNetwork(self):
         roads_layer = self.roads
         if roads_layer:
@@ -141,6 +158,7 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
                 if self.graph and self.tied_points:
                     self.tied_points_police = self.tied_points[0:(len_police-1)]
                     self.tied_points_fire = self.tied_points[len_police:(len_police+len_fire-1)]
+                    self.tied_points_incidents = self.tied_points[(len_police+len_fire)::]
                     text = "network is built for %s locations and %s incidents (runtime: %s)" % (len(source_points), len(source_incidents), time.clock())
                     self.insertReport(text)
                     uf.showMessage(self.iface, text, type='Info', lev=3, dur=10)
@@ -162,7 +180,7 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
                     uf.loadTempLayer(area_layer, shown)  # False -> Keeps layer hidden
                 # insert service area
                 geoms = service_poly.asPolygon()
-                values = [cutoff]
+                values = cutoff
                 uf.insertTempFeatures(area_layer, geoms, values)
                 uf.showMessage(self.iface, 'Check', type='Info', lev=3, dur=1)
                 self.refreshCanvas(area_layer)
@@ -175,13 +193,24 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
 
         """
 
-    def calc_servicearea_police(self):
-        # output is a polygon layer with service area of police
-        self.calculateServiceArea(self.tied_points_police, 'Police',  15)
-
-    def calc_serviceare_fire(self):
-        # output is a polygon layer with service area of fire brigade
-        self.calculateServiceArea(self.tied_points_fire, 'Fire Brigade', 20)
+    def calculateRoute(self):
+        # origin and destination must be in the set of tied_points
+        options = len(self.tied_points)
+        if options > 1:
+            # origin and destination are given as an index in the tied_points list
+            # calculate the shortest path for the given origin and destination
+            path = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
+            # store the route results in temporary layer called "Routes"
+            routes_layer = uf.getLegendLayerByName(self.iface, "Routes")
+            # create one if it doesn't exist
+            if not routes_layer:
+                attribs = ['id']
+                types = [QtCore.QVariant.String]
+                routes_layer = uf.createTempLayer('Routes','LINESTRING',self.network_layer.crs().postgisSrid(), attribs, types)
+                uf.loadTempLayer(routes_layer)
+            # insert route line
+            uf.insertTempFeatures(routes_layer, [path], [['testing',100.00]])
+            self.refreshCanvas(routes_layer)
 
 #######
 #    SOLVE
@@ -191,28 +220,49 @@ class TwisterSolutionsDockWidget(QtGui.QDockWidget, FORM_CLASS):
             # checked = true: show layer in iface
             text = 'button checked'
             uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+            """
+            layer = get(hidden layer)
+            if layer:
+                pass
+                # Show Layer
+            else:
+                # calculate service area and show layer
+                self.calculateServiceArea(self.tied_points_police, 'Police',  15)
+            """
         else:
             # checked = false: hide layer
             text = 'button unchecked'
             # uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+            # layer.hide()
 
     def open_fire_sa(self):
         if self.fireSAButton.isChecked():
             # checked = true: show layer in iface
             text = 'button checked'
             uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+            """
+            layer = get(hidden layer)
+            if layer:
+                # Show Layer
+            else:
+                # calculate service area and show layer
+                self.calculateServiceArea(self.tied_points_fire, 'Fire Brigade', 20)
+            """
         else:
             # checked = false: hide layer
             text = 'button unchecked'
             # uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+            # layer.hide()
 
     def dispatch(self):
         text = 'Dispatched'
         uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+        # change asset count of emergency location -1
 
     def resolve(self):
         text = 'Resolved'
         uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
+        # change asset count of emergency location +1
 
         """
         if true count of feature field "obstructed" changes:

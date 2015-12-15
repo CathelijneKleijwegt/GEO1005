@@ -779,7 +779,7 @@ def insertTempFeatures(layer, geometry, attributes):
     provider.updateExtents()
 
 
-def createTempLayerFull(name, srid, attributes, types, values, coords):
+def createTempLayerFull(name, srid, attributes, types, values, coords):  # layername, CRS, Fieldnames, geomtype, att values, geom(pts
     # create an instance of a memory vector layer
     type = ''
     if len(coords) == 2: type = 'Point'
