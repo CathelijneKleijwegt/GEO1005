@@ -21,8 +21,8 @@
  ***************************************************************************/
 """
 from PyQt4 import QtGui, QtCore
-# from PyQt4.QtCore import *
-# from PyQt4.QtGui import *
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 from qgis.core import *
 from qgis.gui import *
 from qgis.networkanalysis import *
@@ -258,6 +258,18 @@ def getFeaturesByListValues(layer, name, values=list):
     return features
 
 
+def getFeatureIdsByListValues(layer, name, values=list):
+    ids = []
+    if layer:
+        if fieldExists(layer, name):
+            request = QgsFeatureRequest().setSubsetOfAttributes([getFieldIndex(layer, name)])
+            iterator = layer.getFeatures(request)
+            for feature in iterator:
+                att = feature.attribute(name)
+                if att in values:
+                    ids.append(feature.id())
+    return ids
+
 def selectFeaturesByListValues(layer, name, values=list):
     features = []
     if layer:
@@ -458,7 +470,7 @@ def printCanvas(filename=''):
     imageHeight_mm = 10000
     dpi = 300
 
-    map_settings = self.iface.mapCanvas().mapSettings()
+    map_settings = QgisInterface.mapCanvas().mapSettings()
     c = QgsComposition(map_settings)
     c.setPaperSize(imageWidth_mm, imageHeight_mm)
     c.setPrintResolution(dpi)
@@ -548,6 +560,7 @@ def calculateRouteTree(graph, tied_points, origin, destination, impedance=0):
 
 
 def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0):
+    cost = []
     points = []
     if tied_points:
         try:
@@ -573,15 +586,13 @@ def calculateRouteDijkstra(graph, tied_points, origin, destination, impedance=0)
 
                 points.append(from_point)
                 points.reverse()
-
-    return points
-
+    if cost:
+        return points,cost
+    else:
+        return points
 
 def calculateServiceArea(mapCanvas, graph, tied_points, origin, cutoff, impedance=0):
     points = {}
-    upperBound = []
-    delta = mapCanvas.getCoordinateTransform().mapUnitsPerPixel() * 1
-
     if tied_points:
         try:
             from_point = tied_points[origin]
@@ -600,18 +611,9 @@ def calculateServiceArea(mapCanvas, graph, tied_points, origin, cutoff, impedanc
                     outVertexId = graph.arc(tree[i]).outVertex()
                     if cost[outVertexId] < cutoff:
                         points[str(i)]=((graph.vertex(i).point()),cost)
-                        upperBound.append(i)
                 i += 1
 
-            for i in upperBound:
-              centerPoint = graph.vertex(i).point()
-              rb = QgsRubberBand(mapCanvas, True)
-              rb.addPoint(QgsPoint(centerPoint.x() - delta, centerPoint.y() - delta))
-              rb.addPoint(QgsPoint(centerPoint.x() + delta, centerPoint.y() - delta))
-              rb.addPoint(QgsPoint(centerPoint.x() + delta, centerPoint.y() + delta))
-              rb.addPoint(QgsPoint(centerPoint.x() - delta, centerPoint.y() + delta))
-
-    return points, rb.asGeometry()
+    return points
 
 #
 # General functions
@@ -1003,3 +1005,33 @@ def addShapeFileAttributes(layer, attributes, types, values):
                 layer.updateFields()
     return res
 
+
+def addShapeFileFeature(layer, geometry, attribute):
+    # attribute is a tuples/lists (col1, col2, col3)
+    # add geometryto featureclass
+    feat = QgsFeature()
+    feat.setGeometry(geometry)
+    # add attributes to featureclass
+    feat.setAttributes(attribute)
+    layer.addFeature(feat)
+
+
+def addShapeFileFeatures(layer, geometries, attributes):
+    provider = layer.dataProvider()
+    geometry_type = provider.geometryType()
+    for i, geom in enumerate(geometries):
+        feat = QgsFeature()
+        if geometry_type in (1, 4):
+            feat.setGeometry(QgsGeometry.fromPoint(geom))
+        elif geometry_type in (2, 5):
+            feat.setGeometry(QgsGeometry.fromPolyline(geom))
+        elif geometry_type in (3, 6):
+            feat.setGeometry(QgsGeometry.fromPolygon(geom))
+        if attributes:
+            feat.setAttributes(attributes[i])
+        provider.addFeatures([feat])
+    provider.updateExtents()
+
+def deleteAllFeatures(layer):
+     fids = getAllFeatureIds(layer)
+     layer.dataProvider().deleteFeatures(fids)
