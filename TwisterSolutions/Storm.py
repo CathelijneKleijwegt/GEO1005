@@ -27,7 +27,7 @@ from qgis.core import *
 import resources
 
 # Import the code for the DockWidget
-from Storm_dockwidget import TwisterSolutionsDockWidget
+from Storm_dockwidget import TwisterSolutionsMainWindow
 import os.path
 
 #change sys path to networkx package if not installed
@@ -89,7 +89,7 @@ class TwisterSolutions:
         #print "** INITIALIZING TwisterSolutions"
 
         self.pluginIsActive = False
-        self.dockwidget = None
+        self.MainWindow = None
 
         if has_pydevd and is_debug:
             pydevd.settrace('localhost', port=53100, stdoutToServer=True, stderrToServer=True)
@@ -203,7 +203,7 @@ class TwisterSolutions:
         #print "** CLOSING TwisterSolutions"
 
         # disconnects
-        self.dockwidget.closingPlugin.disconnect(self.onClosePlugin)
+        self.MainWindow.closingPlugin.disconnect(self.onClosePlugin)
 
         # remove this statement if dockwidget is to remain
         # for reuse if plugin is reopened
@@ -239,16 +239,15 @@ class TwisterSolutions:
             # dockwidget may not exist if:
             #    first run of plugin
             #    removed on close (see self.onClosePlugin method)
-            if self.dockwidget == None:
+            if self.MainWindow == None:
                 # Create the dockwidget (after translation) and keep reference
-                self.dockwidget = TwisterSolutionsDockWidget(self.iface)
+                self.MainWindow = TwisterSolutionsMainWindow(self.iface)
 
             # connect to provide cleanup on closing of dockwidget
-            self.dockwidget.closingPlugin.connect(self.onClosePlugin)
+            self.MainWindow.closingPlugin.connect(self.onClosePlugin)
 
             # show the dockwidget
             # TODO: fix to allow choice of dock location
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.dockwidget)
-            self.dockwidget.show()
+            self.MainWindow.show()
 
             #run simple tests here
