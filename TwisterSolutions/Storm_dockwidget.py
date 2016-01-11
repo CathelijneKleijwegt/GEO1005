@@ -81,9 +81,8 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
         self.name_asset = {}
         self.name_type = {}
         self.timestamp_osmid = {}
-        self.timestamp_geom = {}
         self.timestamp_QTableItemRow = {}
-        self.timestamp_shortestroutes = {}
+        self.timestamp_osmid_cost = {}
         self.timestamp_ID = {}
 
 
@@ -239,7 +238,7 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                             self.tied_points_police.append(x)
                         else:
                             continue
-                    self.tied_points_fire
+                    self.tied_points_fire = []
                     for (x,att) in list(enumerate(type_source_points)):
                         if att == 'fire_station':
                             self.tied_points_fire.append(x)
@@ -257,12 +256,12 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
         time.clock()
         fields = self.shortest_routes.pendingFields()
         features = []
-        for (i,index_inc) in list(enumerate(self.tied_points_incidents)):
+        for i,index_inc in list(enumerate(self.tied_points_incidents)):
             # depending on necesairy departments, destination is either police or fire or both
             origin = index_inc
             police_att_incident = self.incidentAtt[i][8]
             fire_att_incident = self.incidentAtt[i][9]
-            timestamp_att_incident = str(self.incidentAtt[i][0])
+            timestamp_att_incident = self.incidentAtt[i][0]
             incident_dispatched = self.incidentAtt[i][6]
             incident_resolved = self.incidentAtt[i][7]
             dep_osmids = []
@@ -285,7 +284,7 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                     osmid_list.append(self.locationAtt[index_loc][0])
 
                     if cost > 0.0:
-                        route_dict[self.locationAtt[index_loc][0]] = line # COST is property of line, implicitly included
+                        route_dict[self.locationAtt[index_loc][0]] = cost # COST is property of line, implicitly included
                         # insert route line
                         feat = QgsFeature(fields)
                         # set attributes
@@ -308,7 +307,6 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
 
                 # write timestamp : osmid to internal dictionary
                 self.timestamp_osmid[timestamp_att_incident] = sorted_paths[0][1]
-                self.timestamp_geom[timestamp_att_incident] = sorted_paths[0][2]
                 dep_osmids.append(sorted_paths[0][1])
 
             if fire_att_incident == 'true' and incident_dispatched == 'false':
@@ -328,7 +326,7 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                     cost_list.append(cost)
                     osmid_list.append(self.locationAtt[index_loc][0])
                     if cost > 0.0:
-                        route_dict[self.locationAtt[index_loc][0]] = line # COST is property of line, implicitly included
+                        route_dict[self.locationAtt[index_loc][0]] = cost # COST is property of line, implicitly included
                         # insert route line
                         feat = QgsFeature(fields)
                         # set attributes
@@ -352,13 +350,12 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
 
                 # write timestamp : osmid to internal dictionary
                 self.timestamp_osmid[timestamp_att_incident] = sorted_paths[0][1]
-                self.timestamp_geom[timestamp_att_incident] = sorted_paths[0][2]
                 dep_osmids.append(sorted_paths[0][1])
 
             if fire_att_incident == 'true' and police_att_incident == 'true':
                 self.timestamp_osmid[timestamp_att_incident] = dep_osmids
 
-            self.timestamp_shortestroutes[timestamp_att_incident] = route_dict
+            self.timestamp_osmid_cost[timestamp_att_incident] = route_dict
         self.shortest_routes.startEditing()
         self.shortest_routes.addFeatures(features,False)
         self.shortest_routes.commitChanges()
@@ -366,46 +363,41 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
         self.insertReport('%s shortest routes calculated (runtime: %s)' % (len(features),time.clock()))
         self.assignDepartmentsToIncidents()
 
-    def assignDepartmentsToIncidents(self):
-        if self.firstRun == False:
-            for n, (incident,routes) in list(enumerate(self.timestamp_shortestroutes.items())): # (timestamp, {dict_routes})
-                routes_list = routes.items() # (OSMID, LINE)
-                sorted_route = sorted(routes_list, key=lambda route : route[1].length())
-                if self.incidentAtt[n][6] == 'true' or self.incidentAtt[n][7] == 'true':
-                    continue
-                else:
-                    police_att_incident = self.incidentAtt[n][8]
-                    fire_att_incident = self.incidentAtt[n][9]
-                    dep_osmid = []
-                    if police_att_incident == 'true':
-                        for osmid,path in sorted_route:
-                            dep_name = self.osmid_name[osmid]
-                            dep_type = self.osmid_type[osmid]
-                            asset = self.name_asset[dep_name]
-                            if asset > 0 and dep_type == 'police':
-                                self.timestamp_osmid[incident] = osmid
-                                dep_osmid.append(osmid)
-                                self.timestamp_shortestroutes[incident] = path
+    def assignDepartmentsToIncidents(self, recalc=None):
+        if self.firstRun == False and recalc:
+            for incident in self.incidentAtt:
+                timestamp = incident[0]
+                dispatched = incident[6]
+                fire_needed = incident[9]
+                police_needed = incident[8]
+                if not dispatched == 'true':
+                    route_dict = self.timestamp_osmid_cost[timestamp] # OSMID : COST
+                    osmid_cost = sorted(route_dict.items(), key=lambda route:route[1])
+                    dep_osmids = []
+                    if police_needed == 'true':
+                        for osmid, cost in osmid_cost:
+                            if self.osmid_type[osmid] == 'police' and self.osmid_asset[osmid] > 0:
+                                self.timestamp_osmid[timestamp] = osmid
+                                dep_osmids.append(osmid)
                                 break
                             else:
                                 continue
-                    if fire_att_incident == 'true':
-                        for osmid,path in sorted_route:
-                            dep_name = self.osmid_name[osmid]
-                            dep_type = self.osmid_type[osmid]
-                            asset = self.name_asset[dep_name]
-                            if asset > 0 and dep_type == 'fire_station':
-                                self.timestamp_osmid[incident] = osmid
-                                dep_osmid.append(osmid)
-                                self.timestamp_shortestroutes[incident] = path
+                    if fire_needed == 'true':
+                        for osmid, cost in osmid_cost:
+                            if self.osmid_type[osmid] == 'fire_station' and self.osmid_asset[osmid] > 0:
+                                self.timestamp_osmid[timestamp] = osmid
+                                dep_osmids.append(osmid)
                                 break
                             else:
                                 continue
-                    if police_att_incident == 'true'and fire_att_incident == 'true':
-                        self.timestamp_osmid[incident] = dep_osmid
-            self.formatTable()
+                    if fire_needed == 'true' and police_needed == 'true':
+                        self.timestamp_osmid[timestamp] = dep_osmids
+            self.updateTable()
+            self.dataInit()
+
         else:
             self.formatTable()
+            self.dataInit()
             self.firstRun = False
         return
 
@@ -415,11 +407,11 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
             self.reportTable.setColumnCount(5)
             self.reportTable.setHorizontalHeaderLabels(["Timestamp", "Subtype", "Dispatch","Resolved","Department"])
             self.reportTable.setRowCount(len(self.incidentAtt))
-            for item in list(enumerate(self.incidentAtt)):
+            for item in list(enumerate(self.incidentAtt,1)):
                 self.timestamp_QTableItemRow[item[1][0]] = item[0]
 
             for i in range(len(self.incidentAtt)):
-                timestamp = str(self.incidentAtt[i][0])
+                timestamp = self.incidentAtt[i][0]
                 self.reportTable.setItem(i, 0, QtGui.QTableWidgetItem(str(self.incidentAtt[i][0])))
                 self.reportTable.setItem(i, 1, QtGui.QTableWidgetItem(str(self.incidentAtt[i][2])))
                 self.reportTable.setItem(i, 2, QtGui.QTableWidgetItem(str(self.incidentAtt[i][6])))
@@ -440,6 +432,25 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
             self.reportTable.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
             self.reportTable.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
             self.reportTable.resizeRowsToContents()
+        return
+
+    def updateTable(self):
+        if self.incidents:
+            for i in range(len(self.incidentAtt)):
+                timestamp = self.incidentAtt[i][0]
+                self.reportTable.setItem(i, 0, QtGui.QTableWidgetItem(str(self.incidentAtt[i][0])))
+                self.reportTable.setItem(i, 1, QtGui.QTableWidgetItem(str(self.incidentAtt[i][2])))
+                self.reportTable.setItem(i, 2, QtGui.QTableWidgetItem(str(self.incidentAtt[i][6])))
+                self.reportTable.setItem(i, 3, QtGui.QTableWidgetItem(str(self.incidentAtt[i][7])))
+                if type(self.timestamp_osmid[timestamp]) == list :
+                    police_osmid = self.timestamp_osmid[timestamp][0]
+                    dep_police = self.osmid_name[police_osmid]
+                    fire_osmid = self.timestamp_osmid[timestamp][1]
+                    dep_fire = self.osmid_name[fire_osmid]
+                    names = dep_police+', '+dep_fire
+                    self.reportTable.setItem(i, 4, QtGui.QTableWidgetItem(names))
+                else:
+                    self.reportTable.setItem(i, 4, QtGui.QTableWidgetItem(self.osmid_name[self.timestamp_osmid[timestamp]]))
         return
 
 #######
@@ -482,24 +493,23 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                 rownumb = self.reportTable.row(item)
                 if rownumb not in rowList:
                     rowList.append(rownumb)
-            for rownumber in rowList:
-                incident = int(self.reportTable.item(rownumber,0).text())
-                if self.reportTable.item(rownumber,2).text() == 'true':
-
-                    text = 'Incident with timestamp %s allready dispatched' % incident
-                    self.insertReport(text)
-                    self.messageBar.pushMessage('INFO',text, level=0, duration=2)
-                else:
-                    department = str(self.reportTable.item(rownumber,4).text())
-                    if ', ' in department:
-                        departmentList = department.split(', ')
+            try:
+                for rownumber in rowList:
+                    incident = int(self.reportTable.item(rownumber,0).text())
+                    if self.reportTable.item(rownumber,2).text() == 'true':
+                        text = 'Incident with timestamp %s allready dispatched' % incident
+                        self.insertReport(text)
+                        self.messageBar.pushMessage('INFO',text, level=0, duration=2)
                     else:
-                        departmentList = [department]
-                    self.locations.startEditing()
-                    self.incidents.startEditing()
-                    try:
+                        department = str(self.reportTable.item(rownumber,4).text())
+                        timestamp = int(self.reportTable.item(rownumber,0).text())
+                        if ', ' in department:
+                            departmentList = department.split(', ')
+                        else:
+                            departmentList = [department]
+                        self.locations.startEditing()
+                        self.incidents.startEditing()
                         for item in departmentList:
-                            feature = uf.getFeatureIdsByListValues(self.locations,'name',item)
                             asset = self.name_asset[item]
                             if asset > 0:
                                 newAsset = asset - 1
@@ -510,36 +520,42 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                                 if newAsset == 0:
                                     recalculate = True
                                 self.incidents.changeAttributeValue(self.timestamp_ID[incident], 6, 'true')
+                                depType = self.name_type[item]
+                                if depType == 'police':
+                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 10, item)
+                                elif depType == 'fire_station':
+                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 11, item)
                                 dep_osmid = self.name_osmid[item]
                                 route_id = uf.getFeatureIDFromTable(self.shortest_routes,['id','osmid'], [(incident,dep_osmid)])
                                 attr_map = {route_id[0]:{3:'true'}}
                                 self.shortest_routes.dataProvider().changeAttributeValues(attr_map)
-                                self.reportTable.setItem(rownumber,2,QtGui.QTableWidgetItem('true'))
-                                text = 'Department %s is dispatched to incident with timestamp %s, Assets -1' % (item,incident)
+                                text = 'Department %s is dispatched to incident %s, Assets -1' % (item,incident)
                                 self.insertReport(text)
                             else:
                                 text = 'Department %s has insufficient assets!' % item
                                 self.insertReport(text)
                                 self.messageBar.pushMessage('CRITICAL',text, level=2, duration=5)
-                    except:
-                        text = 'Something went wrong while dispatching to incident with timestamp %s,\ntry again. If problem persists, reload plugin' % incident
-                        self.insertReport(text)
-                        self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
-                    else:
-                        text = 'Incident(s)dispatched, more detail in log window'
-                        self.messageBar.pushMessage('SUCCES',text, level=3, duration=3)
-                    self.locations.commitChanges()
-                    self.incidents.commitChanges()
+                        self.locations.commitChanges()
+                        self.incidents.commitChanges()
+                    self.reportTable.setItem(rownumber,2,QtGui.QTableWidgetItem('true'))
+            except:
+                text = 'Something went wrong while dispatching to incident %s,\ntry again. If problem persists, reload plugin' % incident
+                self.insertReport(text)
+                self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
+            else:
+                text = 'Incident(s)dispatched, more detail in log window'
+                self.insertReport(" ")
+                self.messageBar.pushMessage('SUCCES',text, level=3, duration=3)
+
         self.refreshCanvas()
         self.dataInit()
-        #if recalculate:
-            #self.calculateRoutes()
+        if recalculate:
+            self.assignDepartmentsToIncidents('recalc')
 
     def resolve(self):
         recalculate = False
         selected = self.reportTable.selectedItems()
-        self.insertReport(str(selected))
-        if selected == []:
+        if not selected:
             return
         else:
             rowList = []
@@ -547,29 +563,30 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                 rownumb = self.reportTable.row(item)
                 rowList.append(rownumb)
             rowList = list(set(rowList))
-            for rownumber in rowList:
-                if self.reportTable.item(rownumb,2).text() == 'false':
-                    text = 'Need to dispatch first'
-                    self.insertReport(text)
-                    self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
-                else:
-                    if self.reportTable.item(rownumb,3).text() == 'true':
-                        incident = self.reportTable.item(rownumb,0).text()
-                        text = 'Incident with timestamp %s allready resolved' % incident
+            try:
+                for rownumber in rowList:
+                    if self.reportTable.item(rownumb,2).text() == 'false':
+                        text = 'Need to dispatch first'
                         self.insertReport(text)
-                        self.messageBar.pushMessage('INFO',text, level=0, duration=1)
+                        self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
                     else:
-                        # start resolving incident
-                        department = self.reportTable.item(rownumber,4).text()
-                        timestamp = int(self.reportTable.item(rownumber,0).text())
-                        if ', ' in department:
-                            departmentList = department.split(', ')
+                        if self.reportTable.item(rownumb,3).text() == 'true':
+                            incident = self.reportTable.item(rownumb,0).text()
+                            text = 'Incident with timestamp %s allready resolved' % incident
+                            self.insertReport(text)
+                            self.messageBar.pushMessage('INFO',text, level=0, duration=1)
                         else:
-                            departmentList = [department]
+                            # start resolving incident
+                            department = self.reportTable.item(rownumber,4).text()
+                            timestamp = int(self.reportTable.item(rownumber,0).text())
+                            if ', ' in department:
+                                departmentList = department.split(', ')
+                            else:
+                                departmentList = [department]
 
-                        self.locations.startEditing()
-                        self.incidents.startEditing()
-                        try:
+                            self.locations.startEditing()
+                            self.incidents.startEditing()
+
                             for item in departmentList:
                                 # update asset of emergency location
                                 asset = self.name_asset[item]
@@ -587,28 +604,24 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                                 self.shortest_routes.dataProvider().changeAttributeValues(attr_map)
                                 # set attributes of incident data
                                 self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 7, 'true')
-                                depType = self.name_type[item]
-                                if depType == 'police':
-                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 10, item)
-                                elif depType == 'fire_station':
-                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 11, item)
-                                text = 'Department %s has resolved incident with timestamp %s, Assets +1' % (item,timestamp)
+                                text = 'Department %s has resolved incident %s, Assets +1' % (item,timestamp)
                                 self.insertReport(text)
-                        except:
-                            incident = self.reportTable.item(rownumb,0).text()
-                            text = 'Something went wrong while resolving incident with timestamp '+str(incident)+',\ntry again. If problem persists, reload plugin'
-                            self.insertReport(text)
-                            self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
-                        else:
-                            text = 'Incident(s)resolved, more detail in log window'
-                            self.messageBar.pushMessage('SUCCESS', text, level=3,duration=3)
-                            self.reportTable.setItem(rownumber,3,QtGui.QTableWidgetItem('true'))
-                        self.locations.commitChanges()
-                        self.incidents.commitChanges()
+                            self.locations.commitChanges()
+                            self.incidents.commitChanges()
+                    self.reportTable.setItem(rownumber,3,QtGui.QTableWidgetItem('true'))
+            except:
+                incident = self.reportTable.item(rownumb,0).text()
+                text = 'Something went wrong while resolving incident %s,\ntry again. If problem persists, reload plugin' % incident
+                self.insertReport(text)
+                self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
+            else:
+                text = 'Incident(s)resolved, more detail in log window'
+                self.insertReport(" ")
+                self.messageBar.pushMessage('SUCCESS', text, level=3,duration=3)
         self.refreshCanvas()
         self.dataInit()
-        #if recalculate:
-            #self.calculateRoutes()
+        if recalculate:
+            self.assignDepartmentsToIncidents('recalc')
 
     def zoomToIncident(self):
         selected = self.reportTable.selectedItems()
@@ -633,9 +646,6 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                     osmid = self.name_osmid[name_field]
                 osmids.append(osmid)
                 timestamps.append(timestamp)
-
-            self.insertReport(str(timestamps))
-            self.insertReport((str(osmids)))
         if len(timestamps) > 0:
             tup_list = zip(timestamps,osmids) # list of tuples (timestamp,[osmid,osmid])
             uf.selectFeaturesFromTable(self.shortest_routes,['id','osmid'], tup_list)
