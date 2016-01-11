@@ -25,7 +25,7 @@ from PyQt4 import QtGui, QtCore, uic
 from qgis.core import *
 from qgis.networkanalysis import *
 from qgis.gui import *
-from PyQt4.QtGui import QAction, QMainWindow
+from PyQt4.QtGui import QAction, QMainWindow, QBrush, QColor
 from PyQt4.QtCore import *
 import processing
 
@@ -58,23 +58,34 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
 
+        self.firstRun = True
+
         # define globals
+        # interface
         self.iface = iface
         self.canvas = self.iface.mapCanvas()
+        # network analysis
         self.network_layer = []
         self.tied_points = []
-        self.police_points_osmid = []
-        self.fire_points_osmid = []
+        self.graph = QgsGraph()
+        # network nodes
         self.tied_points_police = []
         self.tied_points_fire = []
         self.tied_points_incidents = []
-        self.graph = QgsGraph()
+        # global dictionaries
+        self.osmid_ID = {}
         self.osmid_name = {}
+        self.osmid_type = {}
+        self.osmid_asset = {}
         self.name_osmid = {}
         self.name_asset = {}
+        self.name_type = {}
         self.timestamp_osmid = {}
         self.timestamp_geom = {}
         self.timestamp_QTableItemRow = {}
+        self.timestamp_shortestroutes = {}
+        self.timestamp_ID = {}
+
 
         # define legend maplayers
         self.roads = uf.getLegendLayerByName(self.iface, 'Roads')  # QVectorLayer
@@ -90,33 +101,25 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
 
         # reset incidents
         self.cleanIncidents()
+        self.cleanAssets()
 
         # get/set global feature data
-        self.incidentData = uf.getAllFeatures(self.incidents)
-        self.incidentAtt = []
-        for item in self.incidentData.items():
-            self.incidentAtt.append(item[1].attributes())
-
         # set global dictionaries
-        for item in zip(uf.getFieldValues(self.locations,'osm_id')[0],uf.getFieldValues(self.locations,'name')[0]):
-            self.osmid_name[item[0]] = item[1]
-        for item in zip(uf.getFieldValues(self.locations,'name')[0],uf.getFieldValues(self.locations,'Assets')[0]):
-            self.name_asset[item[0]] = item[1]
-        for item in zip(uf.getFieldValues(self.locations,'name')[0],uf.getFieldValues(self.locations,'osmid')[0]):
-            self.name_osmid[item[0]] = item[1]
+        self.dataInit()
 
         # Initialize
+        # set pushbutton layer visibility
         self.service_area_police.setScaleBasedVisibility(True)
         self.service_area_police.setMaximumScale(1.0)
         self.service_area_fire.setScaleBasedVisibility(True)
         self.service_area_fire.setMaximumScale(1.0)
+        # initiate network functionality
         self.buildNetwork()
-###self.calculateServiceArea(self.tied_points_police, 'Police',  1500, True)
-        self.calculateRoutes()
-        self.formatTable(self.incidents)
+        #self.calculateRoutes()
+        self.calculateAllRoutes() # self.formatTable() included in function
 
         # Set extent to the extent of our layer
-        self.WidgetCanvas.setExtent(self.incidents.extent())
+        self.WidgetCanvas.setExtent(self.roads.extent())
 
         # Set up the map canvas layer set
         layers = []
@@ -144,48 +147,54 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
 #######
 #    DATA
 #######
+    def dataInit(self):
+        self.incidentData = uf.getAllFeatures(self.incidents)
+        self.incidentAtt = []
+        self.incidentID = []
+        for item in self.incidentData.items():
+            self.incidentAtt.append(item[1].attributes())
+            self.incidentID.append(item[1].id())
 
-#######
-#    INITIALIZE
-#######
+        for n,item in list(enumerate(self.incidentAtt)):
+            self.timestamp_ID[item[0]] = self.incidentID[n]
+
+        self.locationData = uf.getAllFeatures(self.locations)
+        self.locationAtt = []
+        self.locationID = []
+        for item in self.locationData.items():
+            self.locationAtt.append(item[1].attributes())
+            self.locationID.append(item[1].id())
+
+        for n,item in list(enumerate(self.locationAtt)):
+            self.osmid_ID[item[0]] = self.locationID[n]
+
+        for item in self.locationAtt:
+            self.osmid_name[item[0]] = item[2]
+            self.osmid_asset[item[0]] = item[4]
+            self.osmid_type[item[0]] = item[3]
+            self.name_asset[item[2]] = item[4]
+            self.name_osmid[item[2]] = item[0]
+            self.name_type[item[2]] = item[3]
+
     def cleanIncidents(self):
-        attr = {6 : 'false', 7 : 'false'}
+        attr = {6 : 'false', 7 : 'false', 13 : '', 14: ''}
         ids = uf.getAllFeatureIds(self.incidents)
         attr_map = {}
         for id in ids:
             attr_map[id] = attr
         self.incidents.dataProvider().changeAttributeValues(attr_map)
 
-    def formatTable(self, layer):
-        if layer:
-            self.reportTable.setColumnCount(5)
-            self.reportTable.setHorizontalHeaderLabels(["Timestamp", "Subtype", "Dispatch","Resolved","Department"])
-            features = uf.getAllFeatures(layer)
-            self.reportTable.setRowCount(len(features))
-            fieldnames = uf.getFieldNames(layer)
-            attributesTimestamp = uf.getFieldValues(layer, fieldnames[0], null=True, selection=False)[0]
-            attributesSubtype = uf.getFieldValues(layer, fieldnames[2], null=True, selection=False)[0]
-            attributesDispatch = uf.getFieldValues(layer, fieldnames[6], null=True, selection=False)[0]
-            attributesResolved = uf.getFieldValues(layer, fieldnames[7], null=True, selection=False)[0]
+    def cleanAssets(self):
+        attr = {4: 2}
+        ids = uf.getAllFeatureIds(self.locations)
+        attr_map = {}
+        for id in ids:
+            attr_map[id] = attr
+        self.locations.dataProvider().changeAttributeValues(attr_map)
 
-            for item in list(enumerate(attributesTimestamp,1)):
-                self.timestamp_QTableItemRow[item[1]] = item[0]
-
-            for i in range(len(features)):
-                self.reportTable.setItem(i, 0, QtGui.QTableWidgetItem(str(attributesTimestamp[i])))
-                self.reportTable.setItem(i, 1, QtGui.QTableWidgetItem(str(attributesSubtype[i])))
-                self.reportTable.setItem(i, 2, QtGui.QTableWidgetItem(str(attributesDispatch[i])))
-                self.reportTable.setItem(i, 3, QtGui.QTableWidgetItem(str(attributesResolved[i])))
-                self.reportTable.setItem(i, 4, QtGui.QTableWidgetItem("None"))
-
-            self.reportTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
-            self.reportTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
-            self.reportTable.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
-            self.reportTable.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
-            self.reportTable.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
-            self.reportTable.resizeRowsToContents()
-
-
+#######
+#    INITIALIZE
+#######
     def getNetwork(self):
         roads_layer = self.roads
         if roads_layer:
@@ -209,34 +218,467 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
         if self.network_layer:
             # get the points to be used as origin and destination
             # in this case point location of each emergency service
-            source_points = []
-            police_sources = uf.getFeaturesByExpression(self.locations, """\"type\"=\'police\'""")
-            police_points = [feature.geometry().asPoint() for ids, feature in police_sources.items()]
-            self.police_points_osmid = [feature.attributes()[0] for ids, feature in police_sources.items()]
-            len_police = len(police_points)
-            source_points.extend(police_points)
-            fire_sources = uf.getFeaturesByExpression(self.locations, """\"type\"=\'fire_station\'""")
-            fire_points = [feature.geometry().asPoint() for ids, feature in fire_sources.items()]
-            self.fire_points_osmid = [feature.attributes()[0] for ids, feature in fire_sources.items()]
-            len_fire = len(fire_points)
-            source_points.extend(fire_points)
-            selected_incidents = uf.getAllFeatures(self.incidents)
-            source_incidents = [feature.geometry().asPoint() for ids, feature in selected_incidents.items()]
+            source_points = [feature.geometry().asPoint() for ids, feature in self.locationData.items()]
+            type_source_points = []
+            for attribute in self.locationAtt:
+                type_source_points.append(attribute[3])
+            source_incidents = [feature.geometry().asPoint() for ids, feature in self.incidentData.items()]
+            timestamp_source_incidents = []
+            for attribute in self.incidentAtt:
+                timestamp_source_incidents.append(attribute[0])
             total_points = source_points + source_incidents
+            att_total_points = type_source_points + timestamp_source_incidents
             # build the graph including these points
             if len(total_points) > 1:
                 self.graph, self.tied_points = uf.makeUndirectedGraph(self.network_layer, total_points)
                 # the tied points are the new source_points on the graph
                 if self.graph and self.tied_points:
-                    self.tied_points_police = self.tied_points[0:(len_police)]
-                    self.tied_points_fire = self.tied_points[len_police:(len_police+len_fire)]
-                    self.tied_points_incidents = self.tied_points[(len_police+len_fire)::]
-                    text = "network is built for %s locations and %s incidents (runtime: %s)" % (len(source_points), len(source_incidents), time.clock())
+                    self.tied_points_police = []
+                    for (x,att) in list(enumerate(type_source_points)):
+                        if att == 'police':
+                            self.tied_points_police.append(x)
+                        else:
+                            continue
+                    self.tied_points_fire
+                    for (x,att) in list(enumerate(type_source_points)):
+                        if att == 'fire_station':
+                            self.tied_points_fire.append(x)
+                        else:
+                            continue
+                    self.tied_points_incidents = range(len(source_points),len(self.tied_points))
+
+                    text = "Network is built for %s locations and %s incidents (runtime: %s)" % (len(source_points), len(source_incidents), time.clock())
                     self.insertReport(text)
-                    uf.showMessage(self.iface, text, type='Info', lev=3, dur=10)
+                    self.messageBar.pushMessage('INFO',text, level=0, duration=10)
         self.refreshCanvas()
 
+    def calculateAllRoutes(self):
+        #
+        time.clock()
+        fields = self.shortest_routes.pendingFields()
+        features = []
+        for (i,index_inc) in list(enumerate(self.tied_points_incidents)):
+            # depending on necesairy departments, destination is either police or fire or both
+            origin = index_inc
+            police_att_incident = self.incidentAtt[i][8]
+            fire_att_incident = self.incidentAtt[i][9]
+            timestamp_att_incident = str(self.incidentAtt[i][0])
+            incident_dispatched = self.incidentAtt[i][6]
+            incident_resolved = self.incidentAtt[i][7]
+            dep_osmids = []
+            route_dict = {}
+            if police_att_incident == 'true' and incident_dispatched == 'false':
+                path_list = []
+                cost_list = []
+                osmid_list = []
+                for index_loc in self.tied_points_police:
+                    destination = index_loc
+                    police_att_asset = self.locationAtt[index_loc][4]
+                    # calculate the shortest path for the given origin and destination
+                    path,__ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
+                    line = QgsLineStringV2()
+                    for point in path:
+                        line.addVertex(QgsPointV2(point.x(),point.y()))
+                    cost = line.length()
+                    path_list.append(line)
+                    cost_list.append(cost)
+                    osmid_list.append(self.locationAtt[index_loc][0])
 
+                    if cost > 0.0:
+                        route_dict[self.locationAtt[index_loc][0]] = line # COST is property of line, implicitly included
+                        # insert route line
+                        feat = QgsFeature(fields)
+                        # set attributes
+                        feat.setAttribute(fields[0].name(), int(timestamp_att_incident))
+                        feat.setAttribute(fields[1].name(),cost) # COST
+                        feat.setAttribute(fields[2].name(), self.locationAtt[index_loc][0]) # OSMID
+                        feat.setAttribute(fields[3].name(), 'false') # DISPATCHED
+                        feat.setAttribute(fields[4].name(), 'false') # RESOLVED
+                        # set geometry
+                        feat.setGeometry(QgsGeometry(line)) # GEOM
+                        # write feature to layer
+                        features.append(feat)
+                    else:
+                        continue
+                # zip path list on cost
+                cost_osmid_path = zip(cost_list, osmid_list, path_list)
+                # sort path on cost
+                sorted_path = sorted(cost_osmid_path)
+                sorted_paths = [x for x in sorted_path if x[0] != 0.0]
+
+                # write timestamp : osmid to internal dictionary
+                self.timestamp_osmid[timestamp_att_incident] = sorted_paths[0][1]
+                self.timestamp_geom[timestamp_att_incident] = sorted_paths[0][2]
+                dep_osmids.append(sorted_paths[0][1])
+
+            if fire_att_incident == 'true' and incident_dispatched == 'false':
+                path_list = []
+                cost_list = []
+                osmid_list = []
+                for index_loc in self.tied_points_fire:
+                    destination = index_loc
+                    police_att_asset = self.locationAtt[index_loc][4]
+                    # calculate the shortest path for the given origin and destination
+                    path,__ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
+                    line = QgsLineStringV2()
+                    for point in path:
+                        line.addVertex(QgsPointV2(point.x(),point.y()))
+                    cost = line.length()
+                    path_list.append(line)
+                    cost_list.append(cost)
+                    osmid_list.append(self.locationAtt[index_loc][0])
+                    if cost > 0.0:
+                        route_dict[self.locationAtt[index_loc][0]] = line # COST is property of line, implicitly included
+                        # insert route line
+                        feat = QgsFeature(fields)
+                        # set attributes
+                        feat.setAttribute(fields[0].name(), int(timestamp_att_incident))
+                        feat.setAttribute(fields[1].name(),cost) # COST
+                        feat.setAttribute(fields[2].name(), self.locationAtt[index_loc][0]) # OSMID
+                        feat.setAttribute(fields[3].name(), 'false') # DISPATCHED
+                        feat.setAttribute(fields[4].name(), 'false') # RESOLVED
+                        # set geometry
+                        feat.setGeometry(QgsGeometry(line)) # GEOM
+                        # write feature to layer
+                        features.append(feat)
+                    else:
+                        continue
+
+                # zip path list on cost
+                cost_osmid_path = zip(cost_list, osmid_list, path_list)
+                # sort path on cost
+                sorted_path = sorted(cost_osmid_path)
+                sorted_paths = [x for x in sorted_path if x[0] != 0.0]
+
+                # write timestamp : osmid to internal dictionary
+                self.timestamp_osmid[timestamp_att_incident] = sorted_paths[0][1]
+                self.timestamp_geom[timestamp_att_incident] = sorted_paths[0][2]
+                dep_osmids.append(sorted_paths[0][1])
+
+            if fire_att_incident == 'true' and police_att_incident == 'true':
+                self.timestamp_osmid[timestamp_att_incident] = dep_osmids
+
+            self.timestamp_shortestroutes[timestamp_att_incident] = route_dict
+        self.shortest_routes.startEditing()
+        self.shortest_routes.addFeatures(features,False)
+        self.shortest_routes.commitChanges()
+        self.refreshCanvas()
+        self.insertReport('%s shortest routes calculated (runtime: %s)' % (len(features),time.clock()))
+        self.assignDepartmentsToIncidents()
+
+    def assignDepartmentsToIncidents(self):
+        if self.firstRun == False:
+            for n, (incident,routes) in list(enumerate(self.timestamp_shortestroutes.items())): # (timestamp, {dict_routes})
+                routes_list = routes.items() # (OSMID, LINE)
+                sorted_route = sorted(routes_list, key=lambda route : route[1].length())
+                if self.incidentAtt[n][6] == 'true' or self.incidentAtt[n][7] == 'true':
+                    continue
+                else:
+                    police_att_incident = self.incidentAtt[n][8]
+                    fire_att_incident = self.incidentAtt[n][9]
+                    dep_osmid = []
+                    if police_att_incident == 'true':
+                        for osmid,path in sorted_route:
+                            dep_name = self.osmid_name[osmid]
+                            dep_type = self.osmid_type[osmid]
+                            asset = self.name_asset[dep_name]
+                            if asset > 0 and dep_type == 'police':
+                                self.timestamp_osmid[incident] = osmid
+                                dep_osmid.append(osmid)
+                                self.timestamp_shortestroutes[incident] = path
+                                break
+                            else:
+                                continue
+                    if fire_att_incident == 'true':
+                        for osmid,path in sorted_route:
+                            dep_name = self.osmid_name[osmid]
+                            dep_type = self.osmid_type[osmid]
+                            asset = self.name_asset[dep_name]
+                            if asset > 0 and dep_type == 'fire_station':
+                                self.timestamp_osmid[incident] = osmid
+                                dep_osmid.append(osmid)
+                                self.timestamp_shortestroutes[incident] = path
+                                break
+                            else:
+                                continue
+                    if police_att_incident == 'true'and fire_att_incident == 'true':
+                        self.timestamp_osmid[incident] = dep_osmid
+            self.formatTable()
+        else:
+            self.formatTable()
+            self.firstRun = False
+        return
+
+    def formatTable(self):
+        if self.incidents:
+            layer = self.incidents
+            self.reportTable.setColumnCount(5)
+            self.reportTable.setHorizontalHeaderLabels(["Timestamp", "Subtype", "Dispatch","Resolved","Department"])
+            self.reportTable.setRowCount(len(self.incidentAtt))
+            for item in list(enumerate(self.incidentAtt)):
+                self.timestamp_QTableItemRow[item[1][0]] = item[0]
+
+            for i in range(len(self.incidentAtt)):
+                timestamp = str(self.incidentAtt[i][0])
+                self.reportTable.setItem(i, 0, QtGui.QTableWidgetItem(str(self.incidentAtt[i][0])))
+                self.reportTable.setItem(i, 1, QtGui.QTableWidgetItem(str(self.incidentAtt[i][2])))
+                self.reportTable.setItem(i, 2, QtGui.QTableWidgetItem(str(self.incidentAtt[i][6])))
+                self.reportTable.setItem(i, 3, QtGui.QTableWidgetItem(str(self.incidentAtt[i][7])))
+                if type(self.timestamp_osmid[timestamp]) == list :
+                    police_osmid = self.timestamp_osmid[timestamp][0]
+                    dep_police = self.osmid_name[police_osmid]
+                    fire_osmid = self.timestamp_osmid[timestamp][1]
+                    dep_fire = self.osmid_name[fire_osmid]
+                    names = dep_police+', '+dep_fire
+                    self.reportTable.setItem(i, 4, QtGui.QTableWidgetItem(names))
+                else:
+                    self.reportTable.setItem(i, 4, QtGui.QTableWidgetItem(self.osmid_name[self.timestamp_osmid[timestamp]]))
+
+            self.reportTable.horizontalHeader().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
+            self.reportTable.horizontalHeader().setResizeMode(1, QtGui.QHeaderView.ResizeToContents)
+            self.reportTable.horizontalHeader().setResizeMode(2, QtGui.QHeaderView.ResizeToContents)
+            self.reportTable.horizontalHeader().setResizeMode(3, QtGui.QHeaderView.ResizeToContents)
+            self.reportTable.horizontalHeader().setResizeMode(4, QtGui.QHeaderView.Stretch)
+            self.reportTable.resizeRowsToContents()
+        return
+
+#######
+#    SOLVE
+#######
+    def open_police_sa(self):
+        if self.policeSAButton.isChecked():
+            # checked = true: show layer in iface
+            text = 'Service Area Police checked'
+            self.messageBar.pushMessage('INFO',text, level=0, duration=1)
+            self.service_area_police.setScaleBasedVisibility(False)
+        else:
+            # checked = false: hide layer
+            text = 'Service Area Police unchecked'
+            # self.messageBar.pushMessage('INFO',text, level=3, duration=1)
+            self.service_area_police.setScaleBasedVisibility(True)
+        self.refreshCanvas()
+
+    def open_fire_sa(self):
+        if self.fireSAButton.isChecked():
+            # checked = true: show layer in iface
+            text = 'Service Area Fire checked'
+            self.messageBar.pushMessage('INFO',text, level=0, duration=1)
+            self.service_area_fire.setScaleBasedVisibility(False)
+        else:
+            # checked = false: hide layer
+            text = 'Service Area Fire unchecked'
+            # self.messageBar.pushMessage('INFO',text, level=3, duration=1)
+            self.service_area_fire.setScaleBasedVisibility(True)
+        self.refreshCanvas()
+
+    def dispatch(self):
+        recalculate = False
+        selected = self.reportTable.selectedItems()
+        if selected == []:
+            return
+        else:
+            rowList = []
+            for item in selected:
+                rownumb = self.reportTable.row(item)
+                if rownumb not in rowList:
+                    rowList.append(rownumb)
+            for rownumber in rowList:
+                incident = int(self.reportTable.item(rownumber,0).text())
+                if self.reportTable.item(rownumber,2).text() == 'true':
+
+                    text = 'Incident with timestamp %s allready dispatched' % incident
+                    self.insertReport(text)
+                    self.messageBar.pushMessage('INFO',text, level=0, duration=2)
+                else:
+                    department = str(self.reportTable.item(rownumber,4).text())
+                    if ', ' in department:
+                        departmentList = department.split(', ')
+                    else:
+                        departmentList = [department]
+                    self.locations.startEditing()
+                    self.incidents.startEditing()
+                    try:
+                        for item in departmentList:
+                            feature = uf.getFeatureIdsByListValues(self.locations,'name',item)
+                            asset = self.name_asset[item]
+                            if asset > 0:
+                                newAsset = asset - 1
+                                self.name_asset[item] = newAsset
+                                self.osmid_asset[item] = newAsset
+                                id = self.osmid_ID[self.name_osmid[item]]
+                                self.locations.changeAttributeValue(id, 4, newAsset)
+                                if newAsset == 0:
+                                    recalculate = True
+                                self.incidents.changeAttributeValue(self.timestamp_ID[incident], 6, 'true')
+                                dep_osmid = self.name_osmid[item]
+                                route_id = uf.getFeatureIDFromTable(self.shortest_routes,['id','osmid'], [(incident,dep_osmid)])
+                                attr_map = {route_id[0]:{3:'true'}}
+                                self.shortest_routes.dataProvider().changeAttributeValues(attr_map)
+                                self.reportTable.setItem(rownumber,2,QtGui.QTableWidgetItem('true'))
+                                text = 'Department %s is dispatched to incident with timestamp %s, Assets -1' % (item,incident)
+                                self.insertReport(text)
+                            else:
+                                text = 'Department %s has insufficient assets!' % item
+                                self.insertReport(text)
+                                self.messageBar.pushMessage('CRITICAL',text, level=2, duration=5)
+                    except:
+                        text = 'Something went wrong while dispatching to incident with timestamp %s,\ntry again. If problem persists, reload plugin' % incident
+                        self.insertReport(text)
+                        self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
+                    else:
+                        text = 'Incident(s)dispatched, more detail in log window'
+                        self.messageBar.pushMessage('SUCCES',text, level=3, duration=3)
+                    self.locations.commitChanges()
+                    self.incidents.commitChanges()
+        self.refreshCanvas()
+        self.dataInit()
+        #if recalculate:
+            #self.calculateRoutes()
+
+    def resolve(self):
+        recalculate = False
+        selected = self.reportTable.selectedItems()
+        self.insertReport(str(selected))
+        if selected == []:
+            return
+        else:
+            rowList = []
+            for item in selected:
+                rownumb = self.reportTable.row(item)
+                rowList.append(rownumb)
+            rowList = list(set(rowList))
+            for rownumber in rowList:
+                if self.reportTable.item(rownumb,2).text() == 'false':
+                    text = 'Need to dispatch first'
+                    self.insertReport(text)
+                    self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
+                else:
+                    if self.reportTable.item(rownumb,3).text() == 'true':
+                        incident = self.reportTable.item(rownumb,0).text()
+                        text = 'Incident with timestamp %s allready resolved' % incident
+                        self.insertReport(text)
+                        self.messageBar.pushMessage('INFO',text, level=0, duration=1)
+                    else:
+                        # start resolving incident
+                        department = self.reportTable.item(rownumber,4).text()
+                        timestamp = int(self.reportTable.item(rownumber,0).text())
+                        if ', ' in department:
+                            departmentList = department.split(', ')
+                        else:
+                            departmentList = [department]
+
+                        self.locations.startEditing()
+                        self.incidents.startEditing()
+                        try:
+                            for item in departmentList:
+                                # update asset of emergency location
+                                asset = self.name_asset[item]
+                                newAsset = asset + 1
+                                self.name_asset[item] = newAsset
+                                self.osmid_asset[item] = newAsset
+                                id = self.osmid_ID[self.name_osmid[item]]
+                                self.locations.changeAttributeValue(id, 4, newAsset)
+                                if newAsset == 1:
+                                    recalculate = True
+                                # set attributes of shortest route
+                                osmid = self.name_osmid[item]
+                                route_id = uf.getFeatureIDFromTable(self.shortest_routes,['id','osmid'], [(timestamp,osmid)])
+                                attr_map = {route_id[0]:{4:'true'}}
+                                self.shortest_routes.dataProvider().changeAttributeValues(attr_map)
+                                # set attributes of incident data
+                                self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 7, 'true')
+                                depType = self.name_type[item]
+                                if depType == 'police':
+                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 10, item)
+                                elif depType == 'fire_station':
+                                    self.incidents.changeAttributeValue(self.timestamp_ID[timestamp], 11, item)
+                                text = 'Department %s has resolved incident with timestamp %s, Assets +1' % (item,timestamp)
+                                self.insertReport(text)
+                        except:
+                            incident = self.reportTable.item(rownumb,0).text()
+                            text = 'Something went wrong while resolving incident with timestamp '+str(incident)+',\ntry again. If problem persists, reload plugin'
+                            self.insertReport(text)
+                            self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
+                        else:
+                            text = 'Incident(s)resolved, more detail in log window'
+                            self.messageBar.pushMessage('SUCCESS', text, level=3,duration=3)
+                            self.reportTable.setItem(rownumber,3,QtGui.QTableWidgetItem('true'))
+                        self.locations.commitChanges()
+                        self.incidents.commitChanges()
+        self.refreshCanvas()
+        self.dataInit()
+        #if recalculate:
+            #self.calculateRoutes()
+
+    def zoomToIncident(self):
+        selected = self.reportTable.selectedItems()
+        if selected == []:
+            return
+        else:
+            timestamps = []
+            osmids = []
+            rownumbs = []
+            for item in selected:
+                rownumb = self.reportTable.row(item)
+                rownumbs.append(rownumb)
+            rownumbs = list(set(rownumbs))
+            for rownumb in rownumbs:
+                timestamp = int(self.reportTable.item(rownumb,0).text())
+                name_field = self.reportTable.item(rownumb,4).text()
+                if ', ' in name_field:
+                    names = name_field.split(', ')
+                    osmid = [self.name_osmid[names[0]],self.name_osmid[names[1]]]
+                else:
+                    name = name_field
+                    osmid = self.name_osmid[name_field]
+                osmids.append(osmid)
+                timestamps.append(timestamp)
+
+            self.insertReport(str(timestamps))
+            self.insertReport((str(osmids)))
+        if len(timestamps) > 0:
+            tup_list = zip(timestamps,osmids) # list of tuples (timestamp,[osmid,osmid])
+            uf.selectFeaturesFromTable(self.shortest_routes,['id','osmid'], tup_list)
+            self.WidgetCanvas.zoomToSelected(self.shortest_routes)
+            self.refreshCanvas()
+        else:
+            return
+        return
+
+#######
+#    REPORTING
+#######
+    def updateReport(self, report):
+        self.reportList.clear()
+        self.reportList.addItems(report)
+
+    def insertReport(self, item):
+        self.reportList.insertItem(0, item)
+
+    def clearReport(self):
+        self.reportList.clear()
+
+#######
+#    QGIS
+#######
+    def refreshCanvas(self):
+        if self.canvas.isCachingEnabled():
+            self.canvas.clearCache()
+        else:
+            self.canvas.refresh()
+        layers = []
+        for item in uf.getLegendLayers(self.iface):
+            cl = QgsMapCanvasLayer(item)
+            layers.append(cl)
+        self.WidgetCanvas.setLayerSet(layers)
+        self.WidgetCanvas.refreshAllLayers()
+
+    def updateLayers(self):
+        layers = uf.getLegendLayers(self.iface, 'all', 'all')
+
+#######
+#    REMOVED FUNCTIONALITY
+#######
     """
     def calculateServiceArea(self, features, f_type, cutoff, shown=False):      # EMPTY TEMP OUTPUT LAYER !!!
         options = len(features)
@@ -272,466 +714,3 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                 layer = processing.runandload('qgis:concavehull', area_layer, 0.3, False, False, None)
                 self.insertReport(str(layer))
     """
-
-    def calculateRoutes(self):
-        policeData = uf.getFeaturesByExpression(self.locations, """\"type\"=\'police\'""")
-        policeAtt = []
-        for item in policeData.items():
-            policeAtt.append(item[1].attributes())
-
-        fireData = uf.getFeaturesByExpression(self.locations, """\"type\"=\'fire_station\'""")
-        fireAtt = []
-        for item in fireData.items():
-            fireAtt.append(item[1].attributes())
-
-        # origin and destination must be in the set of tied_points
-        origin_set = self.tied_points_incidents
-        range_police = range(0,len(self.tied_points_police))
-        range_fire = range(len(self.tied_points_police),len(self.tied_points_police)+len(self.tied_points_fire))
-        range_incidents = range(len(self.tied_points_police)+len(self.tied_points_fire),len(self.tied_points))
-        # store the route results in layer called "Shortest Routes"
-        layer = self.shortest_routes
-        fields = layer.pendingFields()
-        for i,origin in list(enumerate(range_incidents)):
-            # depending on necesairy departments, destination is either police or fire or both
-            police_att_incident = self.incidentData.items()[i][1][8]
-            fire_att_incident = self.incidentData.items()[i][1][9]
-            timestamp_att_incident = self.incidentData.items()[i][1][0]
-            incident_dispatched = self.incidentData.items()[i][1][6]
-            dep_osmids = []
-            if police_att_incident == 'true' and incident_dispatched == 'false':
-                path_list = []
-                cost_list = []
-                osmid_list = []
-                for n, destination in list(enumerate(range_police)):
-                    police_att_asset = policeData.items()[n][1][4]
-                    # if assets available: calculate route
-                    if police_att_asset > 0:
-                        # calculate the shortest path for the given origin and destination
-                        path,__ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
-                        line = QgsLineStringV2()
-                        for point in path:
-                            line.addVertex(QgsPointV2(point))
-                        cost = line.length()
-                        path_list.append(line)
-                        cost_list.append(cost)
-                        osmid_list.append(policeData.items()[n][1][0])
-                    else:
-                        continue
-
-                # zip path list on cost
-                cost_path_osmid = zip(cost_list, path_list,osmid_list)
-                # sort path on cost
-                sorted_path = sorted(cost_path_osmid, key=lambda path: path[0])
-                sorted_paths = [x for x in sorted_path if x[0] != 0.0]
-                route_cost,route_path, route_osmid = zip(*sorted_paths)
-                # insert route line
-                feat = QgsFeature(fields)
-                # set attributes
-                feat.setAttribute(fields[0].name(), timestamp_att_incident)
-                feat.setAttribute(fields[1].name(), route_cost[0])
-                feat.setAttribute(fields[2].name(), route_osmid[0])
-                # set geometry
-                feat.setGeometry(QgsGeometry(route_path[0]))
-                # write feature to layer
-                (res, outFeats) = layer.dataProvider().addFeatures([feat])
-                # write timestamp : osmid to internal dictionary
-                self.timestamp_osmid[timestamp_att_incident] = route_osmid[0]
-                self.timestamp_geom[timestamp_att_incident] = path_list[0]
-                dep_osmids.append(route_osmid[0])
-
-
-            if fire_att_incident == 'true' and incident_dispatched == 'false':
-                path_list = []
-                cost_list = []
-                osmid_list = []
-                for n,destination in list(enumerate(range_fire)):
-                    fire_att_asset = fireData.items()[n][1][4]
-                    # if assets available: calculate route
-                    if fire_att_asset > 0:
-                        # calculate the shortest path for the given origin and destination
-                        path,__ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, destination)
-                        line = QgsLineStringV2()
-                        for point in path:
-                            line.addVertex(QgsPointV2(point))
-                        cost = line.length()
-                        path_list.append(line)
-                        cost_list.append(cost)
-                        osmid_list.append(fireData.items()[n][1][0])
-                    else:
-                        continue
-
-                # zip path list on cost
-                cost_path_osmid = zip(cost_list, path_list,osmid_list)
-                # sort path on cost
-                sorted_path = sorted(cost_path_osmid, key=lambda path: path[0])
-                sorted_paths = [x for x in sorted_path if x[0] != 0.0]
-                route_cost,route_path, route_osmid = zip(*sorted_paths)
-                # insert route line
-                feat = QgsFeature(fields)
-                # set attributes
-                feat.setAttribute(fields[0].name(), timestamp_att_incident)
-                feat.setAttribute(fields[1].name(), route_cost[0])
-                feat.setAttribute(fields[2].name(), route_osmid[0])
-                # set geometry
-                feat.setGeometry(QgsGeometry(route_path[0]))
-                # write feature to layer
-                (res, outFeats) = layer.dataProvider().addFeatures([feat])
-                # write timestamp : osmid to internal dictionary
-                self.timestamp_osmid[timestamp_att_incident] = route_osmid[0]
-                self.timestamp_geom[timestamp_att_incident] = path_list[0]
-                dep_osmids.append(route_osmid[0])
-
-            if fire_att_incident == 'true' and police_att_incident == 'true':
-                self.timestamp_osmid[timestamp_att_incident] = dep_osmids
-
-        self.refreshCanvas()
-        self.insertReport('Shortest Routes Calculated')
-        self.assignDepartmentsToIncidents()
-
-    def calculateClosestRoutes(self):
-        """
-        each incident find closes department, instead of calculating routes to every department construct a line and
-        find shortest line, then calculate route
-        """
-        policeData = uf.getFeaturesByExpression(self.locations, """\"type\"=\'police\'""")
-        policeAtt = []
-        for item in policeData.items():
-            policeAtt.append(item[1].attributes())
-
-        fireData = uf.getFeaturesByExpression(self.locations, """\"type\"=\'fire_station\'""")
-        fireAtt = []
-        for item in fireData.items():
-            fireAtt.append(item[1].attributes())
-
-        # origin and destination must be in the set of tied_points
-        origin_set = self.tied_points_incidents
-        range_police = range(0,len(self.tied_points_police))
-        range_fire = range(len(self.tied_points_police),len(self.tied_points_police)+len(self.tied_points_fire))
-        range_incidents = range(len(self.tied_points_police)+len(self.tied_points_fire),len(self.tied_points))
-        # store the route results in layer called "Shortest Routes"
-        layer = self.shortest_routes
-        fields = layer.pendingFields()
-        for i,origin in list(enumerate(range_incidents)):
-            # depending on necesairy departments, destination is either police or fire or both
-            police_att_incident = self.incidentData.items()[i][1][8]
-            fire_att_incident = self.incidentData.items()[i][1][9]
-            timestamp_att_incident = self.incidentData.items()[i][1][0]
-            incident_dispatched = self.incidentData.items()[i][1][6]
-            incident_resolved = self.incidentData.items()[i][1][7]
-            dep_osmids = []
-            if police_att_incident == 'true':
-                line_list = []
-                cost_list = []
-                destination_list = []
-                osmid_list = []
-                for n,destination in list(enumerate(range_police)):
-                    police_att_asset = fireData.items()[n][1][4]
-                    # if assets available: calculate route
-                    if police_att_asset > 0:
-                        # from incident to department
-                        line = QLineF(self.tied_points[origin].x(), self.tied_points[origin].y(),
-                                      self.tied_points[destination].x(), self.tied_points[destination].y())
-                        cost = line.length()
-                        line_list.append(line)
-                        cost_list.append(cost)
-                        destination_list.append(destination)
-                        osmid_list.append(fireData.items()[n][1][0])
-                    else:
-                        continue
-
-                # zip path list on cost
-                cost_line_tpdest_osmid = zip(cost_list, line_list, destination_list, osmid_list)
-                # sort path on cost
-                sorted_path = sorted(cost_line_tpdest_osmid, key=lambda path: path[0])
-                route_to_calculate = sorted_path[0]
-                path, __ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, route_to_calculate[2])
-                # insert route line
-                feat = QgsFeature(fields)
-                # set attributes
-                feat.setAttribute(fields[0].name(), timestamp_att_incident) # TIMESTAMP
-                feat.setAttribute(fields[1].name(), route_to_calculate[0])  # COST
-                feat.setAttribute(fields[2].name(), route_to_calculate[3])  # OSMID
-                # set geometry
-                geometry = QgsGeometry.fromPolyline(path)
-                feat.setGeometry(geometry)
-                # write feature to layer
-                (res, outFeats) = layer.dataProvider().addFeatures([feat])
-                # write timestamp : osmid to internal dictionary
-                self.timestamp_osmid[timestamp_att_incident] = route_to_calculate[3]
-                self.timestamp_geom[timestamp_att_incident] = geometry
-                dep_osmids.append(route_to_calculate[3])
-
-
-            if fire_att_incident == 'true':
-                line_list = []
-                cost_list = []
-                destination_list = []
-                osmid_list = []
-                for n,destination in list(enumerate(range_fire)):
-                    fire_att_asset = fireData.items()[n][1][4]
-                    # if assets available: calculate route
-                    if fire_att_asset > 0:
-                        # from incident to department
-                        line = QLineF(self.tied_points[origin].x(), self.tied_points[origin].y(),
-                                      self.tied_points[destination].x(), self.tied_points[destination].y())
-                        cost = line.length()
-                        line_list.append(line)
-                        cost_list.append(cost)
-                        destination_list.append(destination)
-                        osmid_list.append(fireData.items()[n][1][0])
-                    else:
-                        continue
-
-                # zip path list on cost
-                cost_line_tpdest_osmid = zip(cost_list, line_list, destination_list, osmid_list)
-                # sort path on cost
-                sorted_path = sorted(cost_line_tpdest_osmid, key=lambda path: path[0])
-                route_to_calculate = sorted_path[0]
-                path, __ = uf.calculateRouteDijkstra(self.graph, self.tied_points, origin, route_to_calculate[2])
-                # insert route line
-                feat = QgsFeature(fields)
-                # set attributes
-                feat.setAttribute(fields[0].name(), timestamp_att_incident) # TIMESTAMP
-                feat.setAttribute(fields[1].name(), route_to_calculate[0])  # COST
-                feat.setAttribute(fields[2].name(), route_to_calculate[3])  # OSMID
-                # set geometry
-                geometry = QgsGeometry.fromPolyline(path)
-                feat.setGeometry(geometry)
-                # write feature to layer
-                (res, outFeats) = layer.dataProvider().addFeatures([feat])
-                # write timestamp : osmid to internal dictionary
-                self.timestamp_osmid[timestamp_att_incident] = route_to_calculate[3]
-                self.timestamp_geom[timestamp_att_incident] = geometry
-                dep_osmids.append(route_to_calculate[3])
-
-            if fire_att_incident == 'true' and police_att_incident == 'true':
-                self.timestamp_osmid[timestamp_att_incident] = dep_osmids
-
-        self.refreshCanvas()
-        self.insertReport('Shortest Routes Calculated')
-        self.assignDepartmentsToIncidents()
-
-    def assignDepartmentsToIncidents(self):
-        timestamps,__ = uf.getFieldValues(self.shortest_routes,'timestamp')
-        osmids,__ = uf.getFieldValues(self.shortest_routes,'osmid')
-        timestamp_osmid = zip(timestamps,osmids)
-        set_timestamps = list(set(timestamps))
-        self.insertReport('Assigning incidents to departments')
-
-        # self.timestamps_osmid = dictonary of shortest routes with osmid
-
-
-        """
-        for item in set_timestamps:
-            indexes = [i for i,x in enumerate(timestamp_osmid) if x[0] == item]
-            self.insertReport(str(indexes))
-            if len(indexes) == 1:
-                row =  self.timestamp_QTableItemRow[timestamp_osmid[indexes[0]][0]]
-                string = self.osmid_name[timestamp_osmid[indexes[0]][1]]
-                self.reportTable.setItem(row, 4, QtGui.QTableWidgetItem(string))
-
-            elif len(indexes) == 2:
-                dep_a = timestamp_osmid[indexes[0]]
-                dep_b = timestamp_osmid[indexes[1]]
-                dep_names = self.osmid_name[dep_a]+", "+self.osmid_name[dep_b]
-                self.reportTable.setItem(
-                        self.timestamp_QTableItemRow[item[0]], 4, QtGui.QTableWidgetItem(dep_names))
-            else:
-                continue
-        """
-
-#######
-#    SOLVE
-#######
-    def open_police_sa(self):
-        if self.policeSAButton.isChecked():
-            # checked = true: show layer in iface
-            text = 'Service Area Police checked'
-            uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-            self.service_area_police.setScaleBasedVisibility(False)
-        else:
-            # checked = false: hide layer
-            text = 'Service Area Police unchecked'
-            # uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-            self.service_area_police.setScaleBasedVisibility(True)
-        self.refreshCanvas()
-
-
-    def open_fire_sa(self):
-        if self.fireSAButton.isChecked():
-            # checked = true: show layer in iface
-            text = 'Service Area Fire checked'
-            uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-            self.service_area_fire.setScaleBasedVisibility(False)
-
-        else:
-            # checked = false: hide layer
-            text = 'Service Area Fire unchecked'
-            # uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-            self.service_area_fire.setScaleBasedVisibility(True)
-        self.refreshCanvas()
-
-
-    def dispatch(self):
-        selected = self.reportTable.selectedItems()
-        if selected == []:
-            return
-        else:
-            rowList = []
-            for item in selected:
-                rownumb = self.reportTable.row(item)
-                if rownumb not in rowList:
-                    rowList.append(rownumb)
-
-            self.incidents.startEditing()
-            for rownumber in rowList:
-                if self.reportTable.item(rownumb,2).text() == 'true':
-                    text = 'Allready dispatched'
-                    uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-                else:
-                    self.reportTable.setItem(rownumber,2,QtGui.QTableWidgetItem('true'))
-                    timestamp = int(self.reportTable.item(rownumber,0).text())
-                    feature = uf.getFeatureIdsByListValues(self.incidents,'timestamp',[timestamp])
-                    self.incidents.changeAttributeValue(feature[0], 6, 'true')
-                    department = self.reportTable.item(rownumber,4).text()
-                    if ', ' in department:
-                        departmentList = department.split(',')
-                    else:
-                        departmentList = [department]
-
-                    self.locations.startEditing()
-                    for item in departmentList:
-                        feature = uf.getFeatureIdsByListValues(self.locations,'name',item)
-                        asset = self.name_asset[item]
-                        if asset >0:
-                            newAsset = asset - 1
-                            self.name_asset[item] = newAsset
-                            self.locations.changeAttributeValue(feature[0], 4, newAsset)
-                            text = 'Department '+str(item)+' is dispatched to incident with timestamp '+str(timestamp)+', Assets-1'
-                            self.insertReport(text)
-                            text = 'Dispatched'
-                            uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-                            # if self.name_asset[item] == 0:
-                            # recalculate shorest route departments
-                        else:
-                            text = 'Department has insufficient assets!'
-                            uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-                    self.locations.commitChanges()
-
-            self.incidents.commitChanges()
-        self.refreshCanvas()
-
-    def resolve(self):
-        selected = self.reportTable.selectedItems()
-        if selected == []:
-            return
-        else:
-            rowList = []
-            for item in selected:
-                rownumb = self.reportTable.row(item)
-                if rownumb not in rowList:
-                    if self.reportTable.item(rownumb,2).text() == 'true':
-                        rowList.append(rownumb)
-                    else:
-                        text = 'Need to dispatch first'
-                        uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-
-            self.incidents.startEditing()
-            for rownumber in rowList:
-                self.reportTable.setItem(rownumber,3,QtGui.QTableWidgetItem('true'))
-                timestamp = int(self.reportTable.item(rownumber,0).text())
-                feature = uf.getFeatureIdsByListValues(self.incidents,'timestamp',[timestamp])
-                self.insertReport(str(feature))
-                self.incidents.changeAttributeValue(feature[0], 7, 'true')
-                department = self.reportTable.item(rownumber,4).text()
-                if ', ' in department:
-                    departmentList = department.split(',')
-                else:
-                    departmentList = [department]
-
-                self.locations.startEditing()
-                for item in departmentList:
-                    feature = uf.getFeatureIdsByListValues(self.locations,'name',item)
-                    asset = self.name_asset[item]
-                    newAsset = asset + 1
-                    self.name_asset[item] = newAsset
-                    self.locations.changeAttributeValue(feature[0], 4, newAsset)
-                    text = 'Incident with timestamp '+str(timestamp)+' resolved, Assets '+str(item)+' +1'
-                    self.insertReport(text)
-
-                    # update shortest routes
-
-                self.locations.commitChanges()
-
-            self.incidents.commitChanges()
-            if rowList == []:
-                return
-            else:
-                text = 'Resolved'
-                uf.showMessage(self.iface, text, type='Info', lev=3, dur=1)
-        self.refreshCanvas()
-
-    def zoomToIncident(self):
-        selected = self.reportTable.selectedItems()
-        if selected == []:
-            return
-        else:
-            timestamps = []
-            for item in selected:
-                rownumb = self.reportTable.row(item)
-                timestamp = int(self.reportTable.item(rownumb,0).text())
-                timestamps.append(timestamp)
-
-            unique_timestamps = list(set(timestamps))
-            self.insertReport(str(unique_timestamps))
-        if len(unique_timestamps) > 0:
-            uf.selectFeaturesByListValues(self.incidents,'timestamp', unique_timestamps)
-            self.refreshCanvas()
-            if len(unique_timestamps) < 2:
-                self.WidgetCanvas.zoomToSelected(self.incidents)
-                self.WidgetCanvas.zoomScale(20000.0)
-                self.refreshCanvas()
-            else:
-                self.WidgetCanvas.zoomToSelected(self.incidents)
-                if self.WidgetCanvas.scale() < 20000.0:
-                    self.WidgetCanvas.zoomScale(20000.0)
-                self.refreshCanvas()
-        else:
-            return
-
-#######
-#    REPORTING
-#######
-    # report window functions
-    def updateReport(self, report):
-        self.reportList.clear()
-        self.reportList.addItems(report)
-
-    def insertReport(self, item):
-        self.reportList.insertItem(0, item)
-
-    def clearReport(self):
-        self.reportList.clear()
-
-#######
-#    QGIS
-#######
-    def refreshCanvas(self):
-        if self.canvas.isCachingEnabled():
-            self.canvas.clearCache()
-        else:
-            self.canvas.refresh()
-        layers = []
-        for item in uf.getLegendLayers(self.iface):
-            cl = QgsMapCanvasLayer(item)
-            layers.append(cl)
-        self.WidgetCanvas.setLayerSet(layers)
-        self.WidgetCanvas.refreshAllLayers()
-
-    def updateLayers(self):
-        layers = uf.getLegendLayers(self.iface, 'all', 'all')
-
-    def setSelectedLayer(self):
-        layer_name = self.selectLayerCombo.currentText()
-        layer = uf.getLegendLayerByName(self.iface, layer_name)

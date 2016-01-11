@@ -282,6 +282,45 @@ def selectFeaturesByListValues(layer, name, values=list):
                     features.append(feature.id())
             layer.setSelectedFeatures(features)
 
+def selectFeaturesFromTable(layer, fields, tup_list): # list of tuples
+    features = []
+    if layer:
+        for item in tup_list: # item = (timestamp,[[osmid,osmid]])
+            timestamp,osmids = item
+            if type(osmids) == list:
+                for osmid in osmids:
+                    expression = "\"%s\"='%s' and \"%s\"='%s\'" % (fields[0],timestamp, fields[1], osmid)
+                    request = QgsFeatureRequest().setFilterExpression(expression)
+                    iterator = layer.getFeatures(request)
+                    for feature in iterator:
+                        features.append(feature.id())
+            else:
+                expression = "\"%s\"='%s' and \"%s\"='%s\'" % (fields[0],timestamp, fields[1], osmids)
+                request = QgsFeatureRequest().setFilterExpression(expression)
+                iterator = layer.getFeatures(request)
+                for feature in iterator:
+                    features.append(feature.id())
+        layer.setSelectedFeatures(features)
+
+def getFeatureIDFromTable(layer, fields, tup_list):
+    ids = []
+    if layer:
+        for item in tup_list: # item = (timestamp,[[osmid,osmid]])
+            timestamp,osmids = item
+            if type(osmids) == list:
+                for osmid in osmids:
+                    expression = "\"%s\"='%s' and \"%s\"='%s\'" % (fields[0],timestamp, fields[1], osmid)
+                    request = QgsFeatureRequest().setFilterExpression(expression)
+                    iterator = layer.getFeatures(request)
+                    for feature in iterator:
+                        ids.append(feature.id())
+            else:
+                expression = "\"%s\"='%s' and \"%s\"='%s\'" % (fields[0],timestamp, fields[1], osmids)
+                request = QgsFeatureRequest().setFilterExpression(expression)
+                iterator = layer.getFeatures(request)
+                for feature in iterator:
+                    ids.append(feature.id())
+    return ids
 
 def getFeaturesByRangeValues(layer, name, min, max):
     features = {}
