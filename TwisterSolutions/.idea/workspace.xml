@@ -21,23 +21,13 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="Storm_dockwidget.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="Storm_dockwidget.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/Storm_dockwidget.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.035149384">
-              <caret line="125" column="20" selection-start-line="125" selection-start-column="20" selection-end-line="125" selection-end-column="20" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="364" column="0" selection-start-line="364" selection-start-column="0" selection-end-line="364" selection-end-column="0" />
               <folding>
                 <element signature="e#1141#1177#0" expanded="true" />
-                <element signature="e#5166#5382#0" expanded="false" />
-                <element signature="e#5442#6537#0" expanded="false" />
-                <element signature="e#6577#6824#0" expanded="false" />
-                <element signature="e#6861#7071#0" expanded="false" />
-                <element signature="e#7139#7881#0" expanded="false" />
-                <element signature="e#16093#17813#0" expanded="false" />
-                <element signature="e#17850#19935#0" expanded="false" />
-                <element signature="e#19972#21116#0" expanded="false" />
-                <element signature="e#21183#21738#0" expanded="false" />
-                <element signature="e#21776#22321#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -47,10 +37,8 @@
         <entry file="file://$PROJECT_DIR$/utility_functions.py">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="381" column="54" selection-start-line="381" selection-start-column="54" selection-end-line="381" selection-end-column="54" />
-              <folding>
-                <element signature="e#1170#1201#0" expanded="true" />
-              </folding>
+              <caret line="369" column="47" selection-start-line="369" selection-start-column="47" selection-end-line="369" selection-end-column="47" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -59,20 +47,47 @@
         <entry file="file://$PROJECT_DIR$/pb_tool.cfg">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="45" column="0" selection-start-line="45" selection-start-column="0" selection-end-line="45" selection-end-column="0" />
+              <caret line="60" column="5" selection-start-line="60" selection-start-column="5" selection-end-line="60" selection-end-column="5" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Storm.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="icon.png" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/icons/icon.png">
+          <provider selected="true" editor-type-id="images">
+            <state />
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Storm.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Storm.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="59" column="33" selection-start-line="59" selection-start-column="33" selection-end-line="59" selection-end-column="33" />
+            <state vertical-scroll-proportion="0.84210527">
+              <caret line="24" column="23" selection-start-line="24" selection-start-column="23" selection-end-line="24" selection-end-column="23" />
               <folding>
                 <element signature="e#1142#1221#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="resources.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/resources.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.0">
+              <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="resources.qrc" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/resources.qrc">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="-3.4482758">
+              <caret line="5" column="0" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -96,10 +111,11 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/Storm.py" />
-        <option value="$PROJECT_DIR$/pb_tool.cfg" />
         <option value="$PROJECT_DIR$/utility_functions.py" />
         <option value="$PROJECT_DIR$/Storm_dockwidget.py" />
+        <option value="$PROJECT_DIR$/pb_tool.cfg" />
+        <option value="$PROJECT_DIR$/resources.qrc" />
+        <option value="$PROJECT_DIR$/Storm.py" />
       </list>
     </option>
   </component>
@@ -162,6 +178,30 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="TwisterSolutions" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TwisterSolutions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TwisterSolutions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TwisterSolutions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.ProjectViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="TwisterSolutions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="icons" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
@@ -356,10 +396,10 @@
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2544784" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25342464" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.320304" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31921825" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -385,37 +425,18 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="4" />
+      <breakpoints>
+        <line-breakpoint enabled="true" type="python-line">
+          <url>file://$PROJECT_DIR$/Storm_dockwidget.py</url>
+          <line>628</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+      <option name="time" value="5" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/__init__.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="33" column="12" selection-start-line="33" selection-start-column="12" selection-end-line="33" selection-end-column="12" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/utility_functions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="266" column="30" selection-start-line="266" selection-start-column="30" selection-end-line="266" selection-end-column="30" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/pb_tool.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="53" column="29" selection-start-line="53" selection-start-column="16" selection-end-line="53" selection-end-column="29" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/Storm.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -440,16 +461,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -458,9 +469,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="1029" column="28" selection-start-line="1029" selection-start-column="28" selection-end-line="1029" selection-end-column="28" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -496,16 +505,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -514,9 +513,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="993" column="0" selection-start-line="993" selection-start-column="0" selection-end-line="993" selection-end-column="0" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -552,16 +549,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -570,9 +557,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="1018" column="41" selection-start-line="1018" selection-start-column="41" selection-end-line="1018" selection-end-column="41" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -608,16 +593,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -626,9 +601,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="603" column="17" selection-start-line="603" selection-start-column="17" selection-end-line="603" selection-end-column="17" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -664,16 +637,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -682,9 +645,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="603" column="17" selection-start-line="603" selection-start-column="17" selection-end-line="603" selection-end-column="17" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -720,16 +681,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -738,9 +689,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="816" column="23" selection-start-line="816" selection-start-column="23" selection-end-line="816" selection-end-column="23" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -776,16 +725,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -794,9 +733,7 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="823" column="37" selection-start-line="823" selection-start-column="37" selection-end-line="823" selection-end-column="37" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -832,16 +769,6 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -886,24 +813,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pb_tool.cfg">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="45" column="0" selection-start-line="45" selection-start-column="0" selection-end-line="45" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/Storm.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="59" column="33" selection-start-line="59" selection-start-column="33" selection-end-line="59" selection-end-column="33" />
-          <folding>
-            <element signature="e#1142#1221#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -915,29 +824,56 @@
     <entry file="file://$PROJECT_DIR$/utility_functions.py">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="381" column="54" selection-start-line="381" selection-start-column="54" selection-end-line="381" selection-end-column="54" />
-          <folding>
-            <element signature="e#1170#1201#0" expanded="true" />
-          </folding>
+          <caret line="369" column="47" selection-start-line="369" selection-start-column="47" selection-end-line="369" selection-end-column="47" />
+          <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/Storm_dockwidget.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.035149384">
-          <caret line="125" column="20" selection-start-line="125" selection-start-column="20" selection-end-line="125" selection-end-column="20" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="364" column="0" selection-start-line="364" selection-start-column="0" selection-end-line="364" selection-end-column="0" />
           <folding>
             <element signature="e#1141#1177#0" expanded="true" />
-            <element signature="e#5166#5382#0" expanded="false" />
-            <element signature="e#5442#6537#0" expanded="false" />
-            <element signature="e#6577#6824#0" expanded="false" />
-            <element signature="e#6861#7071#0" expanded="false" />
-            <element signature="e#7139#7881#0" expanded="false" />
-            <element signature="e#16093#17813#0" expanded="false" />
-            <element signature="e#17850#19935#0" expanded="false" />
-            <element signature="e#19972#21116#0" expanded="false" />
-            <element signature="e#21183#21738#0" expanded="false" />
-            <element signature="e#21776#22321#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/pb_tool.cfg">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="60" column="5" selection-start-line="60" selection-start-column="5" selection-end-line="60" selection-end-column="5" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/icons/icon.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/resources.qrc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="-3.4482758">
+          <caret line="5" column="0" selection-start-line="5" selection-start-column="0" selection-end-line="5" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/resources.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.0">
+          <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Storm.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.84210527">
+          <caret line="24" column="23" selection-start-line="24" selection-start-column="23" selection-end-line="24" selection-end-column="23" />
+          <folding>
+            <element signature="e#1142#1221#0" expanded="true" />
           </folding>
         </state>
       </provider>

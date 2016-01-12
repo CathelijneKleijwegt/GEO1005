@@ -188,10 +188,10 @@ class TwisterSolutions:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/TwisterSolutions/icon.png'
+        icon_path = self.plugin_dir+'/icons/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Storm'),
+            text=self.tr(u'Storm Emergency Response'),
             callback=self.run,
             parent=self.iface.mainWindow())
 

@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/TwisterSolutions" >
-        <file>icon.png</file>
+    <qresource prefix="/" >
+        <file>icons/icon.png</file>
     </qresource>
 </RCC>

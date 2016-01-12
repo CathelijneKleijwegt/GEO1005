@@ -539,7 +539,7 @@ class TwisterSolutionsMainWindow(QtGui.QMainWindow, FORM_CLASS):
                         self.incidents.commitChanges()
                     self.reportTable.setItem(rownumber,2,QtGui.QTableWidgetItem('true'))
             except:
-                text = 'Something went wrong while dispatching to incident %s,\ntry again. If problem persists, reload plugin' % incident
+                text = 'Something went wrong while dispatching to incidents,\ntry again. If problem persists, try reloading the plugin'
                 self.insertReport(text)
                 self.messageBar.pushMessage('WARNING',text, level=1, duration=2)
             else:
